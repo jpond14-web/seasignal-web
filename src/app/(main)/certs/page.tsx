@@ -22,6 +22,9 @@ const statusColors: Record<string, string> = {
   expired: "border-red-500/30 bg-red-500/10 text-red-400",
 };
 
+const CERTS_CACHE_KEY = "seasignal_certs_cache";
+const CERTS_CACHE_TS_KEY = "seasignal_certs_cache_ts";
+
 export default function CertsPage() {
   const supabase = createClient();
   const [certs, setCerts] = useState<Tables<"certificates">[]>([]);
@@ -29,6 +32,8 @@ export default function CertsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [isOfflineCached, setIsOfflineCached] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   const [form, setForm] = useState({
     cert_type: "coc" as Enums<"cert_type">,
@@ -42,21 +47,61 @@ export default function CertsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => { loadCerts(); }, []);
+  useEffect(() => {
+    // Check if we have cached data on mount
+    try {
+      const cached = localStorage.getItem(CERTS_CACHE_KEY);
+      if (cached) setIsOfflineCached(true);
+    } catch {}
+    loadCerts();
+  }, []);
 
   async function loadCerts() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: profile } = await supabase.from("profiles").select("id").eq("auth_user_id", user.id).single();
-    if (!profile) return;
-    setProfileId(profile.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        loadFromCache();
+        return;
+      }
+      const { data: profile } = await supabase.from("profiles").select("id").eq("auth_user_id", user.id).single();
+      if (!profile) {
+        loadFromCache();
+        return;
+      }
+      setProfileId(profile.id);
 
-    const { data } = await supabase
-      .from("certificates")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .order("expiry_date", { ascending: true, nullsFirst: false });
-    setCerts(data || []);
+      const { data } = await supabase
+        .from("certificates")
+        .select("*")
+        .eq("profile_id", profile.id)
+        .order("expiry_date", { ascending: true, nullsFirst: false });
+
+      const certData = data || [];
+      setCerts(certData);
+      setLoading(false);
+      setIsOfflineMode(false);
+
+      // Cache in localStorage for offline access
+      try {
+        localStorage.setItem(CERTS_CACHE_KEY, JSON.stringify(certData));
+        localStorage.setItem(CERTS_CACHE_TS_KEY, new Date().toISOString());
+        setIsOfflineCached(true);
+      } catch {}
+    } catch {
+      // Network error — fall back to cached data
+      loadFromCache();
+    }
+  }
+
+  function loadFromCache() {
+    try {
+      const cached = localStorage.getItem(CERTS_CACHE_KEY);
+      if (cached) {
+        setCerts(JSON.parse(cached));
+        setIsOfflineMode(true);
+        setIsOfflineCached(true);
+      }
+    } catch {}
     setLoading(false);
   }
 
@@ -125,8 +170,27 @@ export default function CertsPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {isOfflineMode && (
+        <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-sm">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 11-12.728 0M12 9v4m0 4h.01" />
+          </svg>
+          <span>Offline mode — showing cached certificates</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Certificate Wallet</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Certificate Wallet</h1>
+          {isOfflineCached && !isOfflineMode && (
+            <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/10 border border-green-500/30 rounded text-green-400 text-xs">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Available Offline
+            </span>
+          )}
+        </div>
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
           className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-navy-950 font-medium rounded text-sm transition-colors"

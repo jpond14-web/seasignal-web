@@ -10,6 +10,7 @@ type ConversationWithMeta = {
   name: string | null;
   context_port: string | null;
   updated_at: string;
+  is_encrypted?: boolean;
   last_message?: string | null;
   members?: string[];
 };
@@ -26,6 +27,7 @@ export default function MessagesPage() {
   const [foundUsers, setFoundUsers] = useState<{ id: string; display_name: string }[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<{ id: string; display_name: string }[]>([]);
   const [creating, setCreating] = useState(false);
+  const [newEncrypted, setNewEncrypted] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -73,6 +75,7 @@ export default function MessagesPage() {
     const { data: convo, error } = await supabase.from("conversations").insert({
       type: newType,
       name: newType === "group" ? newName || null : null,
+      is_encrypted: newEncrypted,
     }).select("id").single();
 
     if (error || !convo) { setCreating(false); return; }
@@ -87,6 +90,7 @@ export default function MessagesPage() {
     setShowNew(false);
     setSelectedUsers([]);
     setNewName("");
+    setNewEncrypted(false);
     load();
   }
 
@@ -142,6 +146,24 @@ export default function MessagesPage() {
               ))}
             </div>
           )}
+          <div className="flex items-center justify-between mt-4 mb-1">
+            <label htmlFor="encrypt-toggle" className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className={`w-3.5 h-3.5 ${newEncrypted ? "text-teal-400" : "text-slate-500"}`}>
+                <path fillRule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" clipRule="evenodd" />
+              </svg>
+              End-to-end encrypted
+            </label>
+            <button
+              id="encrypt-toggle"
+              type="button"
+              role="switch"
+              aria-checked={newEncrypted}
+              onClick={() => setNewEncrypted((v) => !v)}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${newEncrypted ? "bg-teal-500" : "bg-navy-600"}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${newEncrypted ? "translate-x-[18px]" : "translate-x-[3px]"}`} />
+            </button>
+          </div>
           <button onClick={createConversation} disabled={creating || selectedUsers.length === 0}
             className="mt-3 px-4 py-2 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors">
             {creating ? "Creating..." : "Start Conversation"}
@@ -168,9 +190,16 @@ export default function MessagesPage() {
                   </p>
                   {c.context_port && <p className="text-xs text-slate-500">{c.context_port}</p>}
                 </div>
-                <span className="text-xs text-slate-500">
-                  {new Date(c.updated_at).toLocaleDateString()}
-                </span>
+                <div className="flex items-center gap-2">
+                  {c.is_encrypted && (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-teal-400" aria-label="Encrypted">
+                      <path fillRule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  <span className="text-xs text-slate-500">
+                    {new Date(c.updated_at).toLocaleDateString()}
+                  </span>
+                </div>
               </div>
             </Link>
           ))}

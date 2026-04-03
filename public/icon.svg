@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="96" fill="#0B1426"/>
+  <!-- Anchor -->
+  <g stroke="#0EA5E9" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Vertical shaft -->
+    <line x1="256" y1="160" x2="256" y2="400"/>
+    <!-- Ring at top -->
+    <circle cx="256" cy="130" r="30"/>
+    <!-- Crossbar -->
+    <line x1="196" y1="220" x2="316" y2="220"/>
+    <!-- Flukes (curved arms at bottom) -->
+    <path d="M256 400 C256 400 176 380 156 320"/>
+    <path d="M256 400 C256 400 336 380 356 320"/>
+  </g>
+  <!-- Signal waves -->
+  <g stroke="#0EA5E9" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.5">
+    <path d="M380 140 C400 120 420 120 440 140"/>
+    <path d="M390 100 C420 70 450 70 480 100"/>
+  </g>
+</svg>

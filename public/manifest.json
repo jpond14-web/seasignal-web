@@ -1,0 +1,12 @@
+{
+  "name": "SeaSignal",
+  "short_name": "SeaSignal",
+  "description": "Privacy-first hub for seafarers",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0B1426",
+  "theme_color": "#0EA5E9",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

@@ -47,10 +47,17 @@ export default async function ProfilePage() {
               <h2 className="text-xl font-semibold text-slate-100">
                 {profile.display_name}
               </h2>
-              {profile.is_verified && (
+              {profile.is_verified ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-teal-500/20 text-teal-400 rounded-full border border-teal-500/30">
                   Verified Seafarer
                 </span>
+              ) : (
+                <Link
+                  href="/profile/verify"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/30 hover:bg-amber-500/20 transition-colors"
+                >
+                  Get Verified
+                </Link>
               )}
             </div>
             {profile.bio && (
