@@ -1,0 +1,305 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
+  { href: "/companies", label: "Companies", icon: CompanyIcon },
+  { href: "/vessels", label: "Vessels", icon: VesselIcon },
+  { href: "/pay", label: "Pay", icon: PayIcon },
+  { href: "/certs", label: "Certs", icon: CertIcon },
+  { href: "/messages", label: "Messages", icon: MessageIcon },
+  { href: "/forums", label: "Forums", icon: ForumIcon },
+  { href: "/incidents", label: "Incidents", icon: IncidentIcon },
+  { href: "/rights", label: "Rights", icon: RightsIcon },
+];
+
+export function Sidebar({ userInitial = "U" }: { userInitial?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [collapsed, setCollapsed] = useState(false);
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
+
+  return (
+    <aside
+      className={`hidden md:flex flex-col bg-navy-900 border-r border-navy-700 transition-all duration-200 ${
+        collapsed ? "w-16" : "w-56"
+      }`}
+    >
+      <div className="flex items-center gap-2 px-4 h-14 border-b border-navy-700">
+        <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
+          <span className="text-teal-500 font-bold text-lg shrink-0">⚓</span>
+          {!collapsed && (
+            <span className="font-bold text-slate-100 truncate">SeaSignal</span>
+          )}
+        </Link>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="ml-auto text-slate-400 hover:text-slate-100 shrink-0"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            {collapsed ? (
+              <path d="M6 3l5 5-5 5V3z" />
+            ) : (
+              <path d="M10 3L5 8l5 5V3z" />
+            )}
+          </svg>
+        </button>
+      </div>
+      <nav className="flex-1 py-2 overflow-y-auto">
+        {navItems.map((item) => {
+          const isActive = pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                isActive
+                  ? "text-teal-400 bg-navy-800"
+                  : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
+              }`}
+              title={collapsed ? item.label : undefined}
+            >
+              <item.icon className="w-5 h-5 shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="border-t border-navy-700 p-2 flex flex-col gap-0.5">
+        <Link
+          href="/settings"
+          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded ${
+            pathname.startsWith("/settings")
+              ? "text-teal-400 bg-navy-800"
+              : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
+          }`}
+          title={collapsed ? "Settings" : undefined}
+        >
+          <SettingsIcon className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>Settings</span>}
+        </Link>
+        <Link
+          href="/profile"
+          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded ${
+            pathname.startsWith("/profile")
+              ? "text-teal-400 bg-navy-800"
+              : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
+          }`}
+          title={collapsed ? "Profile" : undefined}
+        >
+          <div className="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200 shrink-0">
+            {userInitial}
+          </div>
+          {!collapsed && <span className="truncate">Profile</span>}
+        </Link>
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-3 px-2 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-navy-800/50 rounded transition-colors w-full text-left"
+          title={collapsed ? "Sign Out" : undefined}
+        >
+          <SignOutIcon className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>Sign Out</span>}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+export function MobileNav({ userInitial = "U" }: { userInitial?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
+
+  return (
+    <>
+      <header className="md:hidden flex items-center justify-between px-4 h-14 bg-navy-900 border-b border-navy-700">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <span className="text-teal-500 font-bold text-lg">⚓</span>
+          <span className="font-bold text-slate-100">SeaSignal</span>
+        </Link>
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-slate-400 hover:text-slate-100"
+          aria-label="Toggle menu"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            {open ? (
+              <path d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
+      </header>
+      {open && (
+        <div className="md:hidden fixed inset-0 top-14 z-50 bg-navy-950/95 backdrop-blur-sm">
+          <nav className="flex flex-col p-4 gap-1">
+            {navItems.map((item) => {
+              const isActive = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-base transition-colors ${
+                    isActive
+                      ? "text-teal-400 bg-navy-800"
+                      : "text-slate-300 hover:bg-navy-800/50"
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+            <hr className="border-navy-700 my-2" />
+            <Link
+              href="/settings"
+              onClick={() => setOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                pathname.startsWith("/settings")
+                  ? "text-teal-400 bg-navy-800"
+                  : "text-slate-300 hover:bg-navy-800/50"
+              }`}
+            >
+              <SettingsIcon className="w-5 h-5" />
+              <span>Settings</span>
+            </Link>
+            <Link
+              href="/profile"
+              onClick={() => setOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                pathname.startsWith("/profile")
+                  ? "text-teal-400 bg-navy-800"
+                  : "text-slate-300 hover:bg-navy-800/50"
+              }`}
+            >
+              <div className="w-6 h-6 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200">
+                {userInitial}
+              </div>
+              <span>Profile</span>
+            </Link>
+            <button
+              onClick={() => {
+                setOpen(false);
+                handleSignOut();
+              }}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-red-400 hover:bg-navy-800/50 transition-colors w-full text-left"
+            >
+              <SignOutIcon className="w-5 h-5" />
+              <span>Sign Out</span>
+            </button>
+          </nav>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Simple SVG icons
+function DashboardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M3 4a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm8 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V4zM3 12a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1v-4zm8 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+    </svg>
+  );
+}
+
+function CompanyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function VesselIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M3 14s1 3 7 3 7-3 7-3H3zm7-12l-3 8h6L10 2z" />
+    </svg>
+  );
+}
+
+function PayIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function CertIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v3a1 1 0 102 0v-3zm2-3a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm4-1a1 1 0 10-2 0v7a1 1 0 102 0V8z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function MessageIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function ForumIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+      <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h1a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
+    </svg>
+  );
+}
+
+function IncidentIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function RightsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.062 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function SignOutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h5a1 1 0 100-2H4V5h4a1 1 0 100-2H3zm11.707 4.293a1 1 0 00-1.414 1.414L14.586 10l-1.293 1.293a1 1 0 001.414 1.414l2-2a1 1 0 000-1.414l-2-2z" clipRule="evenodd" />
+      <path fillRule="evenodd" d="M7 10a1 1 0 011-1h8a1 1 0 110 2H8a1 1 0 01-1-1z" clipRule="evenodd" />
+    </svg>
+  );
+}
