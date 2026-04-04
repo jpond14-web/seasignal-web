@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { CrewHistorySection } from "./crew-history";
 
 function formatEnum(val: string | null): string {
   if (!val) return "";
@@ -106,6 +107,8 @@ export default async function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <CrewHistorySection profileId={profile.id} />
 
       <div className="mt-6 text-center">
         <Link

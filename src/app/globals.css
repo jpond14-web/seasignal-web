@@ -83,3 +83,31 @@ body {
 .animate-slide-in {
   animation: slide-in 0.2s ease-out;
 }
+
+/* Signal card stagger animation */
+@keyframes signal-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-signal-in {
+  animation: signal-in 0.3s ease-out both;
+}
+
+/* Pulse dot for active signals */
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}

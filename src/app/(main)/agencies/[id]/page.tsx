@@ -1,32 +1,14 @@
+import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { FollowButton } from "./follow-button";
 
 function formatEnum(val: string | null): string {
   if (!val) return "";
   return val.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function payReliabilityColor(score: number): string {
-  if (score >= 4) return "text-green-400";
-  if (score >= 2.5) return "text-amber-400";
-  return "text-red-400";
-}
-
-function payReliabilityBorderColor(score: number): string {
-  if (score >= 4) return "border-green-500/30";
-  if (score >= 2.5) return "border-amber-500/30";
-  return "border-red-500/30";
-}
-
-function payReliabilityBgColor(score: number): string {
-  if (score >= 4) return "bg-green-500/10";
-  if (score >= 2.5) return "bg-amber-500/10";
-  return "bg-red-500/10";
-}
-
-export default async function CompanyDetailPage({
+export default async function AgencyDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -34,13 +16,14 @@ export default async function CompanyDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: company } = await supabase
+  const { data: agency } = await supabase
     .from("companies")
     .select("*")
     .eq("id", id)
+    .eq("company_type", "manning_agency")
     .single();
 
-  if (!company) return notFound();
+  if (!agency) return notFound();
 
   const { data: reviews } = await supabase
     .from("reviews")
@@ -49,63 +32,67 @@ export default async function CompanyDetailPage({
     .eq("status", "published")
     .order("created_at", { ascending: false });
 
-  const { data: vessels } = await supabase
-    .from("vessels")
-    .select("id, name, vessel_type, imo_number")
-    .or(`owner_company_id.eq.${id},operator_company_id.eq.${id},manager_company_id.eq.${id}`)
-    .order("name");
-
-  const payScore = company.pay_reliability_score ? Number(company.pay_reliability_score) : null;
+  const flags = (agency.pattern_flags as Record<string, unknown>) || {};
 
   return (
     <div className="max-w-4xl mx-auto">
-      <Link href="/companies" className="text-sm text-slate-400 hover:text-slate-300 mb-4 inline-block">
-        &larr; Companies
+      <Link href="/agencies" className="text-sm text-slate-400 hover:text-slate-300 mb-4 inline-block">
+        &larr; Agencies
       </Link>
-
-      {/* Pay Reliability - Most Prominent Element */}
-      {payScore !== null && (
-        <div className={`rounded-lg p-5 mb-4 border ${payReliabilityBgColor(payScore)} ${payReliabilityBorderColor(payScore)}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-medium text-slate-300">Pay Reliability</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Do they pay on time and in full?</p>
-            </div>
-            <p className={`text-5xl font-mono font-bold ${payReliabilityColor(payScore)}`}>
-              {payScore.toFixed(1)}
-            </p>
-          </div>
-        </div>
-      )}
 
       <div className="bg-navy-900 border border-navy-700 rounded-lg p-6 mb-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">{company.name}</h1>
+            <h1 className="text-2xl font-bold text-slate-100">{agency.name}</h1>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs px-2 py-0.5 bg-navy-800 border border-navy-600 rounded text-slate-400">
-                {formatEnum(company.company_type)}
+                Manning Agency
               </span>
-              {company.country && (
-                <span className="text-sm text-slate-400">{company.country}</span>
+              {agency.country && (
+                <span className="text-sm text-slate-400">{agency.country}</span>
               )}
             </div>
           </div>
-          {company.avg_rating && (
+          {agency.avg_rating && (
             <div className="text-right">
               <p className="text-3xl font-mono font-bold text-teal-400">
-                {Number(company.avg_rating).toFixed(1)}
+                {Number(agency.avg_rating).toFixed(1)}
               </p>
-              <p className="text-xs text-slate-500">{company.review_count} reviews</p>
+              <p className="text-xs text-slate-500">{agency.review_count} reviews</p>
             </div>
           )}
         </div>
 
+        {/* Manning Agency Specific Scores */}
         <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-navy-700">
-          <ScoreCard label="Pay Reliability" value={company.pay_reliability_score} />
-          <ScoreCard label="Safety Culture" value={company.safety_culture_score} />
-          <ScoreCard label="Contract Accuracy" value={company.contract_accuracy_score} />
+          <ScoreCard label="Pay Reliability" value={agency.pay_reliability_score} />
+          <ScoreCard label="Safety Culture" value={agency.safety_culture_score} />
+          <ScoreCard label="Contract Accuracy" value={agency.contract_accuracy_score} />
         </div>
+
+        {/* Manning Agency Flags */}
+        {Boolean(flags.bait_and_switch || flags.hidden_fees || flags.deployment_delays) && (
+          <div className="mt-4 pt-4 border-t border-navy-700">
+            <h3 className="text-sm font-medium text-slate-300 mb-2">Reported Issues</h3>
+            <div className="flex flex-wrap gap-2">
+              {Boolean(flags.bait_and_switch) && (
+                <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400">
+                  Bait &amp; Switch Reports
+                </span>
+              )}
+              {Boolean(flags.hidden_fees) && (
+                <span className="text-xs px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400">
+                  Hidden Fees Reported
+                </span>
+              )}
+              {Boolean(flags.deployment_delays) && (
+                <span className="text-xs px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400">
+                  Deployment Delays
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3 mb-6">
@@ -115,28 +102,7 @@ export default async function CompanyDetailPage({
         >
           Write Review
         </Link>
-        <FollowButton companyId={id} />
       </div>
-
-      {vessels && vessels.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-3">Vessels</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {vessels.map((v) => (
-              <Link
-                key={v.id}
-                href={`/vessels/${v.id}`}
-                className="bg-navy-900 border border-navy-700 rounded-lg p-3 hover:border-navy-600 transition-colors"
-              >
-                <p className="font-medium text-slate-100">{v.name}</p>
-                <p className="text-xs text-slate-500">
-                  IMO {v.imo_number} &middot; {formatEnum(v.vessel_type)}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
 
       <h2 className="text-lg font-semibold mb-3">Reviews</h2>
       {!reviews || reviews.length === 0 ? (
@@ -151,9 +117,7 @@ export default async function CompanyDetailPage({
               <div key={r.id} className="bg-navy-900 border border-navy-700 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm text-slate-300">
-                    {r.is_anonymous
-                      ? "Anonymous"
-                      : "Seafarer"}
+                    {r.is_anonymous ? "Anonymous" : "Seafarer"}
                   </p>
                   <p className="text-xs text-slate-500">
                     {new Date(r.created_at).toLocaleDateString()}
@@ -184,7 +148,7 @@ export default async function CompanyDetailPage({
   );
 }
 
-function ScoreCard({ label, value }: { label: string; value: number | null }) {
+function ScoreCard({ label, value }: { label: string; value: number | null }): React.JSX.Element {
   return (
     <div className="text-center">
       <p className="text-xs text-slate-500">{label}</p>

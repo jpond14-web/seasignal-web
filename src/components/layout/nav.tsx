@@ -10,14 +10,15 @@ import { NotificationBell } from "./notification-bell";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, badge: false },
   { href: "/companies", label: "Companies", icon: CompanyIcon, badge: false },
+  { href: "/agencies", label: "Agencies", icon: AgencyIcon, badge: false },
   { href: "/vessels", label: "Vessels", icon: VesselIcon, badge: false },
   { href: "/pay", label: "Pay", icon: PayIcon, badge: false },
   { href: "/certs", label: "Certs", icon: CertIcon, badge: false },
+  { href: "/sea-time", label: "Sea Time", icon: SeaTimeIcon, badge: false },
   { href: "/messages", label: "Messages", icon: MessageIcon, badge: true },
   { href: "/notifications", label: "Notifications", icon: NotificationIcon, badge: false },
   { href: "/seafarers", label: "Seafarers", icon: SeafarersIcon, badge: false },
   { href: "/forums", label: "Forums", icon: ForumIcon, badge: false },
-  { href: "/jobs", label: "Jobs", icon: JobsIcon, badge: false },
   { href: "/incidents", label: "Incidents", icon: IncidentIcon, badge: false },
   { href: "/rights", label: "Rights", icon: RightsIcon, badge: false },
 ];
@@ -371,6 +372,22 @@ function NotificationIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="currentColor">
       <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+    </svg>
+  );
+}
+
+function AgencyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.97 5.97 0 00-.75-2.906A3.005 3.005 0 0119 17v1h-3zM1 17v1h3v-1a5.97 5.97 0 01.75-2.906A3.005 3.005 0 001 17z" />
+    </svg>
+  );
+}
+
+function SeaTimeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
     </svg>
   );
 }

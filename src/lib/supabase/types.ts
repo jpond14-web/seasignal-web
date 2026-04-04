@@ -653,6 +653,61 @@ export type Database = {
         };
         Relationships: [];
       };
+      company_follows: {
+        Row: {
+          id: string;
+          profile_id: string;
+          company_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          company_id: string;
+          created_at?: string;
+        };
+        Update: {
+          profile_id?: string;
+          company_id?: string;
+        };
+        Relationships: [];
+      };
+      sea_time_records: {
+        Row: {
+          id: string;
+          profile_id: string;
+          vessel_type: string;
+          rank_held: string | null;
+          days: number;
+          start_date: string | null;
+          end_date: string | null;
+          vessel_id: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          vessel_type: string;
+          rank_held?: string | null;
+          days: number;
+          start_date?: string | null;
+          end_date?: string | null;
+          vessel_id?: string | null;
+          notes?: string | null;
+        };
+        Update: {
+          profile_id?: string;
+          vessel_type?: string;
+          rank_held?: string | null;
+          days?: number;
+          start_date?: string | null;
+          end_date?: string | null;
+          vessel_id?: string | null;
+          notes?: string | null;
+        };
+        Relationships: [];
+      };
       job_applications: {
         Row: {
           id: string;
