@@ -203,46 +203,46 @@ export default function CertsPage() {
         <div className="bg-navy-900 border border-navy-700 rounded-lg p-5 mb-6">
           <h2 className="font-semibold text-slate-100 mb-4">{editingId ? "Edit" : "Add"} Certificate</h2>
           <form onSubmit={handleSave} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-slate-300 mb-1">Type</label>
-                <select value={form.cert_type} onChange={(e) => setForm({ ...form, cert_type: e.target.value as Enums<"cert_type"> })}
+                <label htmlFor="cert-type" className="block text-sm text-slate-300 mb-1">Type</label>
+                <select id="cert-type" value={form.cert_type} onChange={(e) => setForm({ ...form, cert_type: e.target.value as Enums<"cert_type"> })}
                   className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none">
                   {certTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-slate-300 mb-1">Title *</label>
-                <input type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                <label htmlFor="cert-title" className="block text-sm text-slate-300 mb-1">Title *</label>
+                <input id="cert-title" type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                   className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-slate-300 mb-1">Cert Number</label>
-                <input type="text" value={form.cert_number} onChange={(e) => setForm({ ...form, cert_number: e.target.value })}
+                <label htmlFor="cert-number" className="block text-sm text-slate-300 mb-1">Cert Number</label>
+                <input id="cert-number" type="text" value={form.cert_number} onChange={(e) => setForm({ ...form, cert_number: e.target.value })}
                   className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-sm text-slate-300 mb-1">Issuing Authority</label>
-                <input type="text" value={form.issuing_authority} onChange={(e) => setForm({ ...form, issuing_authority: e.target.value })}
+                <label htmlFor="cert-issuer" className="block text-sm text-slate-300 mb-1">Issuing Authority</label>
+                <input id="cert-issuer" type="text" value={form.issuing_authority} onChange={(e) => setForm({ ...form, issuing_authority: e.target.value })}
                   className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm text-slate-300 mb-1">Flag State</label>
-                <input type="text" value={form.flag_state} onChange={(e) => setForm({ ...form, flag_state: e.target.value })}
+                <label htmlFor="cert-flag" className="block text-sm text-slate-300 mb-1">Flag State</label>
+                <input id="cert-flag" type="text" value={form.flag_state} onChange={(e) => setForm({ ...form, flag_state: e.target.value })}
                   className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-sm text-slate-300 mb-1">Issue Date</label>
-                <input type="date" value={form.issue_date} onChange={(e) => setForm({ ...form, issue_date: e.target.value })}
+                <label htmlFor="cert-issue-date" className="block text-sm text-slate-300 mb-1">Issue Date</label>
+                <input id="cert-issue-date" type="date" value={form.issue_date} onChange={(e) => setForm({ ...form, issue_date: e.target.value })}
                   className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-sm text-slate-300 mb-1">Expiry Date</label>
-                <input type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
+                <label htmlFor="cert-expiry-date" className="block text-sm text-slate-300 mb-1">Expiry Date</label>
+                <input id="cert-expiry-date" type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
                   className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
               </div>
             </div>
@@ -262,9 +262,18 @@ export default function CertsPage() {
       )}
 
       {certs.length === 0 ? (
-        <div className="bg-navy-900 border border-navy-700 rounded-lg p-8 text-center">
-          <p className="text-slate-400">No certificates yet.</p>
-          <p className="text-slate-500 text-sm mt-1">Add your first certificate to start tracking.</p>
+        <div className="bg-navy-900 border border-navy-700 rounded-lg p-10 text-center">
+          <svg className="w-12 h-12 mx-auto mb-3 text-slate-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v3a1 1 0 102 0v-3zm2-3a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm4-1a1 1 0 10-2 0v7a1 1 0 102 0V8z" clipRule="evenodd" />
+          </svg>
+          <p className="text-slate-300 font-medium">No certificates yet</p>
+          <p className="text-slate-500 text-sm mt-1 mb-4">Track your maritime certificates, get expiry reminders, and access them offline.</p>
+          <button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            className="inline-flex items-center px-4 py-2 bg-teal-500 hover:bg-teal-400 text-navy-950 font-medium rounded text-sm transition-colors"
+          >
+            Add Your First Certificate
+          </button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -305,8 +314,8 @@ export default function CertsPage() {
                     {cert.expiry_date && <span>Expires: {new Date(cert.expiry_date).toLocaleDateString()}</span>}
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => startEdit(cert)} className="text-xs text-slate-400 hover:text-teal-400 transition-colors">Edit</button>
-                    <button onClick={() => handleDelete(cert.id)} className="text-xs text-slate-400 hover:text-red-400 transition-colors">Delete</button>
+                    <button onClick={() => startEdit(cert)} className="text-xs text-slate-400 hover:text-teal-400 transition-colors" aria-label={`Edit certificate: ${cert.title}`}>Edit</button>
+                    <button onClick={() => handleDelete(cert.id)} className="text-xs text-slate-400 hover:text-red-400 transition-colors" aria-label={`Delete certificate: ${cert.title}`}>Delete</button>
                   </div>
                 </div>
               </div>

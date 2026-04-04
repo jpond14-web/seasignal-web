@@ -162,7 +162,7 @@ export default function ConversationPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-theme(spacing.14)-theme(spacing.8))] md:h-[calc(100vh-theme(spacing.12))] max-w-3xl mx-auto">
       <div className="flex items-center gap-3 pb-4 border-b border-navy-700">
-        <Link href="/messages" className="text-slate-400 hover:text-slate-300 text-sm">&larr;</Link>
+        <Link href="/messages" className="text-slate-400 hover:text-slate-300 text-sm" aria-label="Back to messages">&larr;</Link>
         <h1 className="font-semibold text-slate-100 capitalize">{convoName}</h1>
         {isEncrypted && (
           <span className="ml-auto flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-teal-500/15 text-teal-400 border border-teal-500/25">
@@ -210,9 +210,11 @@ export default function ConversationPage() {
           value={newMsg}
           onChange={(e) => setNewMsg(e.target.value)}
           placeholder={isEncrypted ? "Type an encrypted message..." : "Type a message..."}
+          aria-label="Message text"
           className="flex-1 px-3 py-2.5 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none"
         />
         <button type="submit" disabled={sending || !newMsg.trim()}
+          aria-label="Send message"
           className="px-4 py-2.5 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors">
           Send
         </button>

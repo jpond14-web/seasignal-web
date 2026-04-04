@@ -102,8 +102,11 @@ export default function MessagesPage() {
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Messages</h1>
-        <button onClick={() => setShowNew(!showNew)}
-          className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-navy-950 font-medium rounded text-sm transition-colors">
+        <button
+          onClick={() => setShowNew(!showNew)}
+          className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-navy-950 font-medium rounded text-sm transition-colors focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950"
+          aria-label="New conversation"
+        >
           + New
         </button>
       </div>
@@ -141,7 +144,7 @@ export default function MessagesPage() {
               {selectedUsers.map((u) => (
                 <span key={u.id} className="flex items-center gap-1 px-2 py-1 text-xs bg-navy-800 border border-navy-600 rounded text-slate-300">
                   {u.display_name}
-                  <button onClick={() => setSelectedUsers((p) => p.filter((x) => x.id !== u.id))} className="text-slate-500 hover:text-red-400">&times;</button>
+                  <button onClick={() => setSelectedUsers((p) => p.filter((x) => x.id !== u.id))} className="text-slate-500 hover:text-red-400" aria-label={`Remove ${u.display_name}`}>&times;</button>
                 </span>
               ))}
             </div>
@@ -172,11 +175,32 @@ export default function MessagesPage() {
       )}
 
       {loading ? (
-        <p className="text-slate-400">Loading...</p>
+        <div className="space-y-2">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-navy-900 border border-navy-700 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="h-5 w-32 bg-navy-800 animate-pulse rounded mb-1" />
+                  <div className="h-3 w-20 bg-navy-800 animate-pulse rounded" />
+                </div>
+                <div className="h-3 w-16 bg-navy-800 animate-pulse rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : conversations.length === 0 ? (
-        <div className="bg-navy-900 border border-navy-700 rounded-lg p-8 text-center">
-          <p className="text-slate-400">No conversations yet.</p>
-          <p className="text-slate-500 text-sm mt-1">Start a new conversation above.</p>
+        <div className="bg-navy-900 border border-navy-700 rounded-lg p-10 text-center">
+          <svg className="w-12 h-12 mx-auto mb-3 text-slate-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+          </svg>
+          <p className="text-slate-300 font-medium">No conversations yet</p>
+          <p className="text-slate-500 text-sm mt-1 mb-4">Connect with other seafarers through direct or group messages.</p>
+          <button
+            onClick={() => setShowNew(true)}
+            className="inline-flex items-center px-4 py-2 bg-teal-500 hover:bg-teal-400 text-navy-950 font-medium rounded text-sm transition-colors"
+          >
+            Start a Conversation
+          </button>
         </div>
       ) : (
         <div className="space-y-2">

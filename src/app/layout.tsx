@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 const inter = Inter({
@@ -37,7 +38,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
       <body className="min-h-full bg-navy-950 text-slate-100 antialiased">
+        <ToastProvider>
         {children}
+        </ToastProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `

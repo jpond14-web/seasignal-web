@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
 import type { Tables, Enums } from "@/lib/supabase/types";
 
 const departments: { value: Enums<"department_type">; label: string }[] = [
@@ -45,6 +46,7 @@ const vesselTypes: { value: Enums<"vessel_type">; label: string }[] = [
 export default function EditProfilePage() {
   const router = useRouter();
   const supabase = createClient();
+  const { showToast } = useToast();
 
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,7 +120,9 @@ export default function EditProfilePage() {
     setSaving(false);
     if (updateError) {
       setError(updateError.message);
+      showToast(updateError.message, "error");
     } else {
+      showToast("Profile updated successfully");
       router.push("/profile");
     }
   }

@@ -55,19 +55,21 @@ export function Sidebar({ userInitial = "U" }: { userInitial?: string }) {
           </svg>
         </button>
       </div>
-      <nav className="flex-1 py-2 overflow-y-auto">
+      <nav className="flex-1 py-2 overflow-y-auto" aria-label="Main navigation">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+              className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset rounded ${
                 isActive
                   ? "text-teal-400 bg-navy-800"
                   : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
               }`}
               title={collapsed ? item.label : undefined}
+              aria-label={item.label}
+              aria-current={isActive ? "page" : undefined}
             >
               <item.icon className="w-5 h-5 shrink-0" />
               {!collapsed && <span>{item.label}</span>}
@@ -78,34 +80,37 @@ export function Sidebar({ userInitial = "U" }: { userInitial?: string }) {
       <div className="border-t border-navy-700 p-2 flex flex-col gap-0.5">
         <Link
           href="/settings"
-          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded ${
+          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
             pathname.startsWith("/settings")
               ? "text-teal-400 bg-navy-800"
               : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
           }`}
           title={collapsed ? "Settings" : undefined}
+          aria-label="Settings"
         >
           <SettingsIcon className="w-5 h-5 shrink-0" />
           {!collapsed && <span>Settings</span>}
         </Link>
         <Link
           href="/profile"
-          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded ${
+          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
             pathname.startsWith("/profile")
               ? "text-teal-400 bg-navy-800"
               : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
           }`}
           title={collapsed ? "Profile" : undefined}
+          aria-label="Profile"
         >
-          <div className="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200 shrink-0">
+          <div className="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200 shrink-0" aria-hidden="true">
             {userInitial}
           </div>
           {!collapsed && <span className="truncate">Profile</span>}
         </Link>
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-3 px-2 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-navy-800/50 rounded transition-colors w-full text-left"
+          className="flex items-center gap-3 px-2 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-navy-800/50 rounded transition-colors w-full text-left focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset"
           title={collapsed ? "Sign Out" : undefined}
+          aria-label="Sign out"
         >
           <SignOutIcon className="w-5 h-5 shrink-0" />
           {!collapsed && <span>Sign Out</span>}
@@ -149,7 +154,7 @@ export function MobileNav({ userInitial = "U" }: { userInitial?: string }) {
       </header>
       {open && (
         <div className="md:hidden fixed inset-0 top-14 z-50 bg-navy-950/95 backdrop-blur-sm">
-          <nav className="flex flex-col p-4 gap-1">
+          <nav className="flex flex-col p-4 gap-1" aria-label="Main navigation">
             {navItems.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (

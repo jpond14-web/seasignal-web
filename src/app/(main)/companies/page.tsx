@@ -50,11 +50,13 @@ export default function CompaniesPage() {
           placeholder="Search companies..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search companies by name"
           className="flex-1 px-3 py-2.5 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none"
         />
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
+          aria-label="Filter by company type"
           className="px-3 py-2.5 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none"
         >
           <option value="">All Types</option>
@@ -65,7 +67,22 @@ export default function CompaniesPage() {
       </div>
 
       {loading ? (
-        <p className="text-slate-400">Loading...</p>
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-navy-900 border border-navy-700 rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="h-5 w-48 bg-navy-800 animate-pulse rounded mb-2" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-20 bg-navy-800 animate-pulse rounded" />
+                    <div className="h-3 w-16 bg-navy-800 animate-pulse rounded" />
+                  </div>
+                </div>
+                <div className="h-6 w-10 bg-navy-800 animate-pulse rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : companies.length === 0 ? (
         <div className="bg-navy-900 border border-navy-700 rounded-lg p-8 text-center">
           <p className="text-slate-400">No companies found.</p>
