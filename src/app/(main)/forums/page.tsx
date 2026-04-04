@@ -98,7 +98,7 @@ export default function ForumsPage() {
                 </div>
 
                 <div className="text-right shrink-0 ml-4">
-                  <p className="text-lg font-mono font-bold text-slate-300">{cat.post_count}</p>
+                  <p className="text-lg font-mono font-bold text-slate-300">{(cat as Record<string, unknown>).post_count as number ?? 0}</p>
                   <p className="text-xs text-slate-500">posts</p>
                 </div>
               </Link>

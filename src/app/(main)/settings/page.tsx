@@ -1,11 +1,21 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUserSettings, type FontSize } from "@/lib/hooks/useUserSettings";
 import { useFontSize } from "@/components/layout/FontSizeProvider";
+import { useTheme } from "@/components/layout/ThemeProvider";
+import { subscribeToPush, unsubscribeFromPush } from "@/lib/pushSubscription";
+
+type ThemeOption = "dark" | "light" | "system";
+
+const THEME_OPTIONS: { value: ThemeOption; label: string; desc: string }[] = [
+  { value: "dark", label: "Dark", desc: "Navy & teal" },
+  { value: "light", label: "Light", desc: "White & gray" },
+  { value: "system", label: "System", desc: "Auto" },
+];
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
@@ -53,26 +63,106 @@ export default function SettingsPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("Settings saved");
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState<{ id: string; blocked_id: string; display_name: string }[]>([]);
+  const [blockedLoading, setBlockedLoading] = useState(true);
+  const [unblocking, setUnblocking] = useState<string | null>(null);
+  const profileIdRef = useRef<string | null>(null);
 
   const userSettings = useUserSettings();
   const { setFontSize: applyFontSize } = useFontSize();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
       setEmail(data.user?.email ?? null);
       setDisplayName(
         data.user?.user_metadata?.display_name ??
           data.user?.user_metadata?.full_name ??
           null
       );
-    });
+
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("auth_user_id", data.user.id)
+          .single();
+        if (profile) {
+          profileIdRef.current = profile.id;
+          loadBlockedUsers(profile.id);
+        } else {
+          setBlockedLoading(false);
+        }
+      } else {
+        setBlockedLoading(false);
+      }
+    }
+    loadUser();
   }, [supabase]);
 
-  const showToast = useCallback(() => {
+  async function loadBlockedUsers(profileId: string) {
+    setBlockedLoading(true);
+    try {
+      const { data: blocks } = await supabase
+        .from("user_blocks")
+        .select("id, blocked_id")
+        .eq("blocker_id", profileId);
+
+      if (!blocks || blocks.length === 0) {
+        setBlockedUsers([]);
+        return;
+      }
+
+      const blockedIds = blocks.map((b) => b.blocked_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", blockedIds);
+
+      const nameMap = new Map(
+        (profiles ?? []).map((p) => [p.id, p.display_name])
+      );
+
+      setBlockedUsers(
+        blocks.map((b) => ({
+          id: b.id,
+          blocked_id: b.blocked_id,
+          display_name: nameMap.get(b.blocked_id) ?? "Unknown User",
+        }))
+      );
+    } catch {
+      setBlockedUsers([]);
+    } finally {
+      setBlockedLoading(false);
+    }
+  }
+
+  async function handleUnblock(blockRowId: string, displayName: string) {
+    setUnblocking(blockRowId);
+    try {
+      const { error } = await supabase
+        .from("user_blocks")
+        .delete()
+        .eq("id", blockRowId);
+      if (error) throw error;
+      setBlockedUsers((prev) => prev.filter((b) => b.id !== blockRowId));
+      showToast(`Unblocked ${displayName}`);
+    } catch {
+      showToast("Failed to unblock user");
+    } finally {
+      setUnblocking(null);
+    }
+  }
+
+  const showToast = useCallback((msg = "Settings saved") => {
+    setToastMessage(msg);
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 2000);
   }, []);
@@ -88,6 +178,41 @@ export default function SettingsPage() {
     userSettings.setFontSize(size);
     applyFontSize(size);
     showToast();
+  }
+
+  function handleThemeChange(newTheme: ThemeOption) {
+    setTheme(newTheme);
+    showToast();
+  }
+
+  async function handlePushToggle(enabled: boolean) {
+    const profileId = profileIdRef.current;
+    if (!profileId) {
+      showToast("Unable to update push settings");
+      return;
+    }
+
+    setPushBusy(true);
+    try {
+      if (enabled) {
+        const success = await subscribeToPush(profileId);
+        if (success) {
+          userSettings.setPushNotifications(true);
+          showToast("Push notifications enabled");
+        } else {
+          showToast("Notification permission denied");
+          return;
+        }
+      } else {
+        await unsubscribeFromPush(profileId);
+        userSettings.setPushNotifications(false);
+        showToast("Push notifications disabled");
+      }
+    } catch {
+      showToast("Failed to update push settings");
+    } finally {
+      setPushBusy(false);
+    }
   }
 
   async function handleChangePassword() {
@@ -216,32 +341,78 @@ export default function SettingsPage() {
             />
             <Toggle
               checked={userSettings.push_notifications}
-              onChange={handleToggle(userSettings.setPushNotifications)}
-              label="Push notifications"
+              onChange={handlePushToggle}
+              label={pushBusy ? "Updating push..." : "Push notifications"}
             />
           </div>
+        </div>
+
+        {/* Blocked Users */}
+        <div className="bg-navy-900 border border-navy-700 rounded-lg p-6">
+          <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider mb-4">Blocked Users</h2>
+          {blockedLoading ? (
+            <p className="text-sm text-slate-500">Loading...</p>
+          ) : blockedUsers.length === 0 ? (
+            <p className="text-sm text-slate-500">No blocked users</p>
+          ) : (
+            <ul className="divide-y divide-navy-700">
+              {blockedUsers.map((user) => (
+                <li key={user.id} className="flex items-center justify-between py-3">
+                  <span className="text-sm text-slate-300">{user.display_name}</span>
+                  <button
+                    onClick={() => handleUnblock(user.id, user.display_name)}
+                    disabled={unblocking === user.id}
+                    className="px-3 py-1.5 bg-navy-800 border border-navy-600 text-xs text-slate-300 rounded hover:bg-navy-700 hover:text-slate-100 transition-colors disabled:opacity-50"
+                  >
+                    {unblocking === user.id ? "Unblocking..." : "Unblock"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Appearance */}
         <div className="bg-navy-900 border border-navy-700 rounded-lg p-6">
           <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider mb-4">Appearance</h2>
-          <div>
-            <p className="text-sm text-slate-400 mb-3">Font Size</p>
-            <div className="flex gap-2">
-              {FONT_SIZE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleFontSizeChange(opt.value)}
-                  className={`flex-1 py-2.5 px-3 rounded border text-sm transition-colors ${
-                    userSettings.font_size === opt.value
-                      ? "bg-teal-500/15 border-teal-500/40 text-teal-400"
-                      : "bg-navy-800 border-navy-600 text-slate-400 hover:border-navy-500 hover:text-slate-300"
-                  }`}
-                >
-                  <span className="block font-medium">{opt.label}</span>
-                  <span className="block text-xs mt-0.5 opacity-70">{opt.desc}</span>
-                </button>
-              ))}
+          <div className="space-y-5">
+            <div>
+              <p className="text-sm text-slate-400 mb-3">Theme</p>
+              <div className="flex gap-2">
+                {THEME_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleThemeChange(opt.value)}
+                    className={`flex-1 py-2.5 px-3 rounded border text-sm transition-colors ${
+                      theme === opt.value
+                        ? "bg-teal-500/15 border-teal-500/40 text-teal-400"
+                        : "bg-navy-800 border-navy-600 text-slate-400 hover:border-navy-500 hover:text-slate-300"
+                    }`}
+                  >
+                    <span className="block font-medium">{opt.label}</span>
+                    <span className="block text-xs mt-0.5 opacity-70">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-slate-400 mb-3">Font Size</p>
+              <div className="flex gap-2">
+                {FONT_SIZE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleFontSizeChange(opt.value)}
+                    className={`flex-1 py-2.5 px-3 rounded border text-sm transition-colors ${
+                      userSettings.font_size === opt.value
+                        ? "bg-teal-500/15 border-teal-500/40 text-teal-400"
+                        : "bg-navy-800 border-navy-600 text-slate-400 hover:border-navy-500 hover:text-slate-300"
+                    }`}
+                  >
+                    <span className="block font-medium">{opt.label}</span>
+                    <span className="block text-xs mt-0.5 opacity-70">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -292,7 +463,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <Toast message="Settings saved" visible={toastVisible} />
+      <Toast message={toastMessage} visible={toastVisible} />
     </div>
   );
 }

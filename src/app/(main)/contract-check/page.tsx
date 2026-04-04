@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, Fragment } from "react";
+import { useState, useEffect, Fragment } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -133,7 +134,54 @@ const SALARY_DATA: Record<string, SalaryByRank> = {
   },
 };
 
-function getSalaryRange(vesselType: string, rank: RankCategory): SalaryRange {
+interface RealSalaryData {
+  median: number;
+  p25: number;
+  p75: number;
+  reportCount: number;
+}
+
+async function fetchRealSalaryData(
+  vesselType: string,
+  rank: RankCategory
+): Promise<RealSalaryData | null> {
+  const supabase = createClient();
+
+  // Map contract-check rank categories to pay_reports rank values
+  const rankMap: Record<RankCategory, string[]> = {
+    ab: ["ab", "rating", "os", "ordinary_seaman", "able_seaman"],
+    officer: ["officer", "2nd_officer", "3rd_officer", "2nd_engineer", "3rd_engineer", "chief_officer", "chief_mate"],
+    master_ce: ["master", "chief_engineer", "captain"],
+  };
+
+  const rankValues = rankMap[rank];
+
+  const { data, error } = await supabase
+    .from("pay_reports")
+    .select("monthly_base_usd")
+    .eq("vessel_type", vesselType as VesselType)
+    .in("rank", rankValues);
+
+  if (error || !data || data.length < 3) return null;
+
+  const salaries = data.map((r) => Number(r.monthly_base_usd) || 0).sort((a, b) => a - b);
+  const len = salaries.length;
+
+  const median =
+    len % 2 === 0
+      ? (salaries[len / 2 - 1] + salaries[len / 2]) / 2
+      : salaries[Math.floor(len / 2)];
+
+  const p25 = salaries[Math.floor(len * 0.25)];
+  const p75 = salaries[Math.floor(len * 0.75)];
+
+  return { median, p25, p75, reportCount: len };
+}
+
+function getSalaryRange(vesselType: string, rank: RankCategory, realData?: RealSalaryData | null): SalaryRange {
+  if (realData) {
+    return { min: realData.p25, max: realData.p75 };
+  }
   const key =
     vesselType in SALARY_DATA ? vesselType : "general_cargo";
   return SALARY_DATA[key][rank];
@@ -147,13 +195,14 @@ function assess(
   s1: StepOneData,
   s2: StepTwoData,
   s3: StepThreeData,
-  s4: StepFourData
+  s4: StepFourData,
+  realSalary?: RealSalaryData | null
 ): AssessmentResult {
   const redFlags: string[] = [];
   const greenFlags: string[] = [];
 
   // --- Pay Assessment ---
-  const range = getSalaryRange(s1.vesselType || "general_cargo", (s1.rank || "ab") as RankCategory);
+  const range = getSalaryRange(s1.vesselType || "general_cargo", (s1.rank || "ab") as RankCategory, realSalary);
   const salary = Number(s2.monthlySalary) || 0;
   const median = (range.min + range.max) / 2;
   let payScore: number;
@@ -410,17 +459,36 @@ export default function ContractCheckPage() {
   const [step, setStep] = useState(1);
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [methodologyOpen, setMethodologyOpen] = useState(false);
+  const [realSalary, setRealSalary] = useState<RealSalaryData | null>(null);
+  const [salaryDataLoading, setSalaryDataLoading] = useState(false);
 
   const [s1, setS1] = useState<StepOneData>({ vesselType: "", rank: "", contractMonths: "" });
   const [s2, setS2] = useState<StepTwoData>({ monthlySalary: "", overtimeRate: "", leavePayIncluded: false, travelAllowance: "", signOnBonus: "" });
   const [s3, setS3] = useState<StepThreeData>({ hoursPerDay: "", daysOn: "", daysOff: "", internetAccess: "no", foodQuality: 3 });
   const [s4, setS4] = useState<StepFourData>({ noticePeriod: "", earlyTerminationPenalty: false, repatriationCovered: true, medicalCoverage: "standard", insuranceProvided: false });
 
+  // Fetch real salary data when vessel type and rank are selected
+  useEffect(() => {
+    if (!s1.vesselType || !s1.rank) {
+      setRealSalary(null);
+      return;
+    }
+    let cancelled = false;
+    setSalaryDataLoading(true);
+    fetchRealSalaryData(s1.vesselType, s1.rank as RankCategory).then((data) => {
+      if (!cancelled) {
+        setRealSalary(data);
+        setSalaryDataLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [s1.vesselType, s1.rank]);
+
   function handleNext() {
     if (step < TOTAL_STEPS) {
       setStep(step + 1);
     } else {
-      setResult(assess(s1, s2, s3, s4));
+      setResult(assess(s1, s2, s3, s4, realSalary));
       setStep(TOTAL_STEPS + 1);
     }
   }
@@ -432,6 +500,7 @@ export default function ContractCheckPage() {
   function handleReset() {
     setStep(1);
     setResult(null);
+    setRealSalary(null);
     setS1({ vesselType: "", rank: "", contractMonths: "" });
     setS2({ monthlySalary: "", overtimeRate: "", leavePayIncluded: false, travelAllowance: "", signOnBonus: "" });
     setS3({ hoursPerDay: "", daysOn: "", daysOff: "", internetAccess: "no", foodQuality: 3 });
@@ -866,6 +935,29 @@ export default function ContractCheckPage() {
                     </ul>
                   </div>
                   {key === "pay" && (
+                    <>
+                    {/* Data source indicator */}
+                    <div className={`rounded-lg px-4 py-2.5 flex items-center gap-2 text-xs ${realSalary ? "bg-teal-500/5 border border-teal-500/20" : "bg-navy-800 border border-navy-700"}`}>
+                      {realSalary ? (
+                        <>
+                          <svg className="w-3.5 h-3.5 text-teal-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-teal-300">
+                            Based on {realSalary.reportCount} real seafarer report{realSalary.reportCount !== 1 ? "s" : ""}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-slate-400">
+                            Using industry benchmarks (not enough real reports for this combination)
+                          </span>
+                        </>
+                      )}
+                    </div>
                     <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 flex gap-3">
                       <svg className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -882,6 +974,7 @@ export default function ContractCheckPage() {
                         </a>
                       </p>
                     </div>
+                    </>
                   )}
                 </Fragment>
               );

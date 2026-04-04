@@ -152,8 +152,8 @@ export default function MyJobsPage() {
                       >
                         {job.title}
                       </Link>
-                      <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[job.status] || "bg-navy-800 text-slate-400"}`}>
-                        {formatEnum(job.status)}
+                      <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[job.status ?? "active"] || "bg-navy-800 text-slate-400"}`}>
+                        {formatEnum(job.status ?? "active")}
                       </span>
                     </div>
                     {job.companies?.name && (
@@ -220,8 +220,8 @@ export default function MyJobsPage() {
                       >
                         {app.job_listings?.title || "Unknown Job"}
                       </Link>
-                      <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[app.status] || "bg-navy-800 text-slate-400"}`}>
-                        {formatEnum(app.status)}
+                      <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[app.status ?? "pending"] || "bg-navy-800 text-slate-400"}`}>
+                        {formatEnum(app.status ?? "pending")}
                       </span>
                     </div>
                     {app.job_listings?.companies?.name && (

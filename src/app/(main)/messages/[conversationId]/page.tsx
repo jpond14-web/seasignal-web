@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
 import {
   getOrCreateConversationKey,
   encrypt,
@@ -23,6 +24,8 @@ type Message = {
   reply_to_id: string | null;
   reactions: Json;
   attachments: Json;
+  edited_at: string | null;
+  expires_at: string | null;
   created_at: string;
   profiles?: { display_name: string } | null;
 };
@@ -31,6 +34,7 @@ type MemberProfile = {
   profile_id: string;
   display_name: string;
   last_seen_at: string | null;
+  last_read_at: string | null;
 };
 
 const REACTION_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🎉"];
@@ -56,6 +60,7 @@ export default function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const router = useRouter();
   const supabase = createClient();
+  const { showToast } = useToast();
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -74,6 +79,9 @@ export default function ConversationPage() {
 
   // Reply state
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+
+  // Edit state
+  const [editingMsg, setEditingMsg] = useState<Message | null>(null);
 
   // Reactions popup
   const [showReactionsFor, setShowReactionsFor] = useState<string | null>(null);
@@ -135,6 +143,30 @@ export default function ConversationPage() {
         await supabase.from("profiles").update({ last_seen_at: new Date().toISOString() }).eq("id", profile.id);
       }
 
+      // Verify membership before loading anything
+      if (profile) {
+        const { data: membership } = await supabase
+          .from("conversation_members")
+          .select("id")
+          .eq("conversation_id", conversationId)
+          .eq("profile_id", profile.id)
+          .single();
+
+        if (!membership) {
+          router.push("/messages");
+          return;
+        }
+
+        // Load blocked users
+        const { data: blocks } = await supabase
+          .from("user_blocks")
+          .select("blocked_id")
+          .eq("blocker_id", profile.id);
+        if (blocks) {
+          setBlockedIds(new Set(blocks.map(b => b.blocked_id)));
+        }
+      }
+
       const { data: convo } = await supabase.from("conversations").select("name, type, is_encrypted, description").eq("id", conversationId).single();
       if (convo) {
         setConvoName(convo.name || convo.type.replace(/_/g, " "));
@@ -152,15 +184,16 @@ export default function ConversationPage() {
         }
       }
 
-      // Load members
+      // Load members with last_read_at for read receipts
       if (profile) {
         const { data: memberRows } = await supabase
           .from("conversation_members")
-          .select("profile_id")
+          .select("profile_id, last_read_at")
           .eq("conversation_id", conversationId);
 
         if (memberRows) {
           const memberIds = memberRows.map(m => m.profile_id);
+          const readAtMap = new Map(memberRows.map(m => [m.profile_id, m.last_read_at]));
           const { data: profiles } = await supabase
             .from("profiles")
             .select("id, display_name, last_seen_at")
@@ -171,6 +204,7 @@ export default function ConversationPage() {
               profile_id: p.id,
               display_name: p.display_name,
               last_seen_at: p.last_seen_at,
+              last_read_at: readAtMap.get(p.id) ?? null,
             })));
             const nameMap: Record<string, string> = {};
             profiles.forEach(p => { nameMap[p.id] = p.display_name; });
@@ -311,14 +345,48 @@ export default function ConversationPage() {
     setShowScrollBottom(false);
   }
 
+  function startEdit(msg: Message) {
+    setEditingMsg(msg);
+    setNewMsg(displayText(msg));
+    setReplyTo(null);
+  }
+
+  function cancelEdit() {
+    setEditingMsg(null);
+    setNewMsg("");
+  }
+
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
     if (!newMsg.trim() || !profileId) return;
     setSending(true);
 
+    // Edit mode
+    if (editingMsg) {
+      const { error } = await supabase
+        .from("messages")
+        .update({ plaintext: newMsg.trim(), edited_at: new Date().toISOString() })
+        .eq("id", editingMsg.id)
+        .eq("sender_id", profileId);
+
+      if (error) {
+        showToast(error.message, "error");
+        setSending(false);
+        return;
+      }
+
+      setEditingMsg(null);
+      setNewMsg("");
+      setSending(false);
+      loadMessages();
+      return;
+    }
+
+    let insertError: { message: string } | null = null;
+
     if (isEncrypted && cryptoKey) {
       const ciphertext = await encrypt(newMsg.trim(), cryptoKey);
-      await supabase.from("messages").insert({
+      const { error } = await supabase.from("messages").insert({
         conversation_id: conversationId,
         sender_id: profileId,
         message_type: "text" as const,
@@ -326,14 +394,26 @@ export default function ConversationPage() {
         ciphertext,
         plaintext: null,
       });
+      insertError = error;
     } else {
-      await supabase.from("messages").insert({
+      const { error } = await supabase.from("messages").insert({
         conversation_id: conversationId,
         sender_id: profileId,
         message_type: "text" as const,
         reply_to_id: replyTo?.id || null,
         plaintext: newMsg.trim(),
       });
+      insertError = error;
+    }
+
+    if (insertError) {
+      // Rate limit or other DB error
+      const msg = insertError.message.includes("Rate limit")
+        ? "You're sending messages too fast. Please wait a moment."
+        : insertError.message;
+      showToast(msg, "error");
+      setSending(false);
+      return;
     }
 
     // Update conversation last_message info
@@ -370,6 +450,8 @@ export default function ConversationPage() {
 
   async function deleteMessage(msgId: string) {
     if (!profileId) return;
+    const confirmed = window.confirm("Delete this message?");
+    if (!confirmed) return;
     await supabase.from("messages").delete().eq("id", msgId).eq("sender_id", profileId);
     loadMessages();
   }
@@ -382,6 +464,47 @@ export default function ConversationPage() {
       .eq("conversation_id", conversationId)
       .eq("profile_id", profileId);
     router.push("/messages");
+  }
+
+  // Report message
+  const [reportingMsg, setReportingMsg] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("");
+
+  async function reportMessage(msgId: string) {
+    if (!profileId || !reportReason.trim()) return;
+    await supabase
+      .from("reported_content")
+      .insert({
+        reporter_id: profileId,
+        content_type: "message",
+        content_id: msgId,
+        reason: reportReason.trim(),
+      });
+    setReportingMsg(null);
+    setReportReason("");
+    showToast("Message reported. Our team will review it. Thank you.");
+  }
+
+  // Block user
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+
+  async function blockUser(targetId: string) {
+    if (!profileId || targetId === profileId) return;
+    const confirmed = window.confirm("Block this user? You won't see their messages.");
+    if (!confirmed) return;
+    const { data: existing } = await supabase
+      .from("user_blocks")
+      .select("id")
+      .eq("blocker_id", profileId)
+      .eq("blocked_id", targetId)
+      .single();
+    if (!existing) {
+      await supabase.from("user_blocks").insert({
+        blocker_id: profileId,
+        blocked_id: targetId,
+      });
+    }
+    setBlockedIds(prev => new Set([...prev, targetId]));
   }
 
   // File upload error state
@@ -477,6 +600,20 @@ export default function ConversationPage() {
     return "";
   }
 
+  /** Wrap URLs in clickable links */
+  function linkify(text: string): React.ReactNode {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    if (parts.length === 1) return text;
+    return parts.map((part, i) =>
+      urlRegex.test(part) ? (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline">{part}</a>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    );
+  }
+
   function getSenderName(senderId: string): string {
     return senderNames[senderId] || "Unknown";
   }
@@ -493,6 +630,23 @@ export default function ConversationPage() {
   // DM partner info
   const dmPartner = convoType === "dm" ? members.find(m => m.profile_id !== profileId) : null;
   const onlineCount = members.filter(m => isOnline(m.last_seen_at)).length;
+
+  // Find the current user's last message ID for read receipts
+  const myLastMessageId = profileId
+    ? [...messages].reverse().find(m => m.sender_id === profileId && !blockedIds.has(m.sender_id))?.id ?? null
+    : null;
+
+  // Compute read-by names for the user's last message
+  function getReadByNames(msgCreatedAt: string): string[] {
+    if (!profileId) return [];
+    return members
+      .filter(m =>
+        m.profile_id !== profileId &&
+        m.last_read_at &&
+        m.last_read_at >= msgCreatedAt
+      )
+      .map(m => m.display_name);
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-theme(spacing.14)-theme(spacing.8))] md:h-[calc(100vh-theme(spacing.12))] max-w-3xl mx-auto">
@@ -586,12 +740,14 @@ export default function ConversationPage() {
         {messages.length === 0 && (
           <p className="text-center text-slate-500 text-sm py-8">No messages yet. Say something!</p>
         )}
-        {messages.map((msg, idx) => {
+        {messages.filter(msg => !blockedIds.has(msg.sender_id) && !(msg.expires_at && new Date(msg.expires_at) < new Date())).map((msg, idx) => {
           const isMine = msg.sender_id === profileId;
+          const isMyLastMsg = isMine && msg.id === myLastMessageId;
           const grouped = shouldGroup(msg, messages[idx - 1] || null);
           const reactions: Reactions = (msg.reactions as Reactions) || {};
           const attachments: Attachment[] = (msg.attachments as Attachment[]) || [];
           const replyMsg = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null;
+          const readByNames = isMyLastMsg ? getReadByNames(msg.created_at) : [];
 
           return (
             <div
@@ -644,12 +800,22 @@ export default function ConversationPage() {
                   )}
 
                   {msg.message_type !== "image" && (
-                    <p className="text-sm text-slate-200 whitespace-pre-wrap break-words">{displayText(msg)}</p>
+                    <p className="text-sm text-slate-200 whitespace-pre-wrap break-words">{linkify(displayText(msg))}</p>
                   )}
 
                   {!grouped && (
-                    <p className="text-[10px] text-slate-500 mt-1">
+                    <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
                       {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {msg.edited_at && (
+                        <span className="ml-1 text-slate-500/70 italic" title={`Edited ${new Date(msg.edited_at).toLocaleString()}`}>(edited)</span>
+                      )}
+                      {msg.expires_at && (
+                        <span className="inline-flex items-center gap-0.5 ml-1 text-amber-400/70" title={`Expires ${new Date(msg.expires_at).toLocaleString()}`}>
+                          <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>
@@ -709,18 +875,64 @@ export default function ConversationPage() {
                       </div>
                     )}
                   </div>
-                  {isMine && (
-                    <button
-                      onClick={() => deleteMessage(msg.id)}
-                      className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-navy-800 transition-colors"
-                      title="Delete"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </button>
+                  {isMine ? (
+                    <>
+                      {msg.message_type === "text" && (
+                        <button
+                          onClick={() => startEdit(msg)}
+                          className="p-1 text-slate-500 hover:text-teal-400 rounded hover:bg-navy-800 transition-colors"
+                          title="Edit"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                          </svg>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => deleteMessage(msg.id)}
+                        className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-navy-800 transition-colors"
+                        title="Delete"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setReportingMsg(msg.id)}
+                        className="p-1 text-slate-500 hover:text-amber-400 rounded hover:bg-navy-800 transition-colors"
+                        title="Report"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => blockUser(msg.sender_id)}
+                        className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-navy-800 transition-colors"
+                        title="Block user"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </>
                   )}
                 </div>
+
+                {/* Read receipts — only on the current user's last message */}
+                {isMyLastMsg && readByNames.length > 0 && (
+                  <div className="flex items-center gap-1 mt-1 justify-end">
+                    <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor" className="text-teal-400 shrink-0">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-[10px] text-slate-500">
+                      Read by {readByNames.join(", ")}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -762,11 +974,51 @@ export default function ConversationPage() {
         </div>
       )}
 
+      {/* Editing banner */}
+      {editingMsg && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-navy-900 border-t border-teal-500/30 text-xs">
+          <div className="flex-1 min-w-0 border-l-2 border-teal-500 pl-2">
+            <span className="text-teal-400 font-medium">Editing message</span>
+            <p className="text-slate-400 truncate">{displayText(editingMsg)}</p>
+          </div>
+          <button onClick={cancelEdit} className="text-slate-500 hover:text-red-400 shrink-0" aria-label="Cancel edit">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Upload error */}
       {uploadError && (
         <div className="flex items-center justify-between px-3 py-1.5 text-xs text-red-400 bg-red-500/10 border-t border-red-500/20">
           <span>{uploadError}</span>
           <button onClick={() => setUploadError(null)} className="text-red-400/60 hover:text-red-400 ml-2" aria-label="Dismiss">&times;</button>
+        </div>
+      )}
+
+      {/* Report modal */}
+      {reportingMsg && (
+        <div className="bg-navy-800 border border-navy-600 rounded-lg p-4 mb-3">
+          <h4 className="text-sm font-semibold text-slate-200 mb-2">Report Message</h4>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {["Spam", "Harassment", "Misinformation", "Inappropriate", "Other"].map(r => (
+              <button key={r} onClick={() => setReportReason(r)}
+                className={`px-3 py-1 text-xs rounded border ${reportReason === r ? "bg-red-500/20 text-red-400 border-red-500/30" : "bg-navy-900 text-slate-400 border-navy-600"}`}>
+                {r}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => reportMessage(reportingMsg)} disabled={!reportReason}
+              className="px-4 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-40 text-xs font-medium rounded transition-colors">
+              Submit Report
+            </button>
+            <button onClick={() => { setReportingMsg(null); setReportReason(""); }}
+              className="px-4 py-1.5 bg-navy-900 text-slate-400 hover:text-slate-200 text-xs rounded transition-colors">
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
@@ -794,14 +1046,17 @@ export default function ConversationPage() {
           type="text"
           value={newMsg}
           onChange={(e) => { setNewMsg(e.target.value); handleTyping(); }}
-          placeholder={isEncrypted ? "Type an encrypted message..." : "Type a message..."}
-          aria-label="Message text"
-          className="flex-1 px-3 py-2.5 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none"
+          placeholder={editingMsg ? "Edit your message..." : isEncrypted ? "Type an encrypted message..." : "Type a message..."}
+          aria-label={editingMsg ? "Edit message text" : "Message text"}
+          className={`flex-1 px-3 py-2.5 bg-navy-800 border rounded text-slate-100 placeholder:text-slate-500 text-sm focus:outline-none ${
+            editingMsg ? "border-teal-500/50 focus:border-teal-500" : "border-navy-600 focus:border-teal-500"
+          }`}
+          onKeyDown={(e) => { if (e.key === "Escape" && editingMsg) cancelEdit(); }}
         />
         <button type="submit" disabled={sending || !newMsg.trim()}
-          aria-label="Send message"
+          aria-label={editingMsg ? "Save edit" : "Send message"}
           className="px-4 py-2.5 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors shrink-0">
-          Send
+          {editingMsg ? "Save" : "Send"}
         </button>
       </form>
     </div>

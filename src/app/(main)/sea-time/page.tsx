@@ -146,16 +146,16 @@ function CsvImportModal({
 
     const rows = parsed.valid.map((r) => ({
       profile_id: profileId,
-      vessel_type: r.vessel_type,
-      rank_held: r.rank_held || null,
+      vessel_type: r.vessel_type as "tanker" | "bulk_carrier" | "container" | "general_cargo" | "offshore" | "passenger" | "roro" | "lng" | "lpg" | "chemical" | "reefer" | "tug" | "fishing" | "other",
+      rank_held: r.rank_held || "Unknown",
       days: r.days,
-      start_date: r.start_date,
-      end_date: r.end_date,
+      year: r.start_date ? new Date(r.start_date).getFullYear() : new Date().getFullYear(),
       notes: r.notes || null,
-      vessel_id: null,
+      vessel_id: null as string | null,
     }));
 
-    const { error } = await supabase.from("sea_time_records").insert(rows);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase.from("sea_time_records").insert(rows as any);
     setImporting(false);
 
     if (error) {
@@ -386,7 +386,7 @@ export default function SeaTimePage() {
     ? vessels.filter(
         (v) =>
           v.name.toLowerCase().includes(vesselSearch.toLowerCase()) ||
-          v.imo_number.includes(vesselSearch)
+          (v.imo_number || "").includes(vesselSearch)
       ).slice(0, 10)
     : [];
 
@@ -430,9 +430,10 @@ export default function SeaTimePage() {
 
     const payload = {
       profile_id: profileId,
-      vessel_type: formVesselType,
-      rank_held: formRankHeld.trim() || null,
+      vessel_type: formVesselType as "tanker" | "bulk_carrier" | "container" | "general_cargo" | "offshore" | "passenger" | "roro" | "lng" | "lpg" | "chemical" | "reefer" | "tug" | "fishing" | "other",
+      rank_held: formRankHeld.trim() || "Unknown",
       days: parseInt(formDays, 10),
+      year: formStartDate ? new Date(formStartDate).getFullYear() : new Date().getFullYear(),
       start_date: formStartDate || null,
       end_date: formEndDate || null,
       vessel_id: formVesselId || null,

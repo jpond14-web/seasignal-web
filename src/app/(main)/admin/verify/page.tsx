@@ -143,7 +143,7 @@ export default function AdminVerifyPage() {
                     </p>
                     <p className="text-xs text-slate-500">
                       Joined{" "}
-                      {new Date(profile.created_at).toLocaleDateString()}
+                      {new Date(profile.created_at!).toLocaleDateString()}
                     </p>
                   </div>
                 </div>

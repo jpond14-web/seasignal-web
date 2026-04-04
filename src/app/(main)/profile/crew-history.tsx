@@ -7,13 +7,13 @@ import Link from "next/link";
 
 type CrewHistoryEntry = {
   id: string;
-  profile_id: string;
-  vessel_id: string;
+  profile_id: string | null;
+  vessel_id: string | null;
   company_id: string | null;
-  rank_held: string;
+  rank_held: string | null;
   joined_at: string | null;
   left_at: string | null;
-  is_current: boolean;
+  is_current: boolean | null;
   created_at: string;
   vessel_name?: string;
   company_name?: string;
@@ -22,7 +22,7 @@ type CrewHistoryEntry = {
 type VesselOption = {
   id: string;
   name: string;
-  imo_number: string;
+  imo_number: string | null;
 };
 
 type CompanyOption = {
@@ -34,7 +34,7 @@ type ReconnectProfile = {
   id: string;
   display_name: string;
   department_tag: string | null;
-  is_verified: boolean;
+  is_verified: boolean | null;
   avatar_url: string | null;
   vessel_name: string;
 };
@@ -83,7 +83,7 @@ export function CrewHistorySection({ profileId }: { profileId: string }) {
 
     if (history && history.length > 0) {
       // Fetch vessel names
-      const vesselIds = [...new Set(history.map((h) => h.vessel_id))];
+      const vesselIds = [...new Set(history.map((h) => h.vessel_id).filter(Boolean))] as string[];
       const { data: vesselData } = await supabase
         .from("vessels")
         .select("id, name")
@@ -103,7 +103,7 @@ export function CrewHistorySection({ profileId }: { profileId: string }) {
 
       const enriched = history.map((h) => ({
         ...h,
-        vessel_name: vesselMap.get(h.vessel_id) || "Unknown Vessel",
+        vessel_name: (h.vessel_id ? vesselMap.get(h.vessel_id) : null) || "Unknown Vessel",
         company_name: h.company_id ? companyMap.get(h.company_id) || undefined : undefined,
       }));
       setEntries(enriched);
@@ -125,7 +125,7 @@ export function CrewHistorySection({ profileId }: { profileId: string }) {
   }, [supabase, profileId]);
 
   async function loadReconnects(
-    history: { vessel_id: string; joined_at: string | null; left_at: string | null }[]
+    history: { vessel_id: string | null; joined_at: string | null; left_at: string | null }[]
   ) {
     const vesselIds = [...new Set(history.map((h) => h.vessel_id))];
     if (vesselIds.length === 0) return;
@@ -144,6 +144,7 @@ export function CrewHistorySection({ profileId }: { profileId: string }) {
     const matchedVesselIds = new Map<string, string>();
 
     for (const other of otherCrew) {
+      if (!other.profile_id || !other.vessel_id) continue;
       const myEntries = history.filter((h) => h.vessel_id === other.vessel_id);
       for (const mine of myEntries) {
         // Simple overlap check: if either has no dates, consider it a match
@@ -196,7 +197,7 @@ export function CrewHistorySection({ profileId }: { profileId: string }) {
           .filter(
             (v) =>
               v.name.toLowerCase().includes(vesselSearch.toLowerCase()) ||
-              v.imo_number.includes(vesselSearch)
+              (v.imo_number || "").includes(vesselSearch)
           )
           .slice(0, 8)
       : [];

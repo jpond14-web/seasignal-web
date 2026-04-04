@@ -53,8 +53,8 @@ export default function EditVesselPage({
 
       if (vessel) {
         setName(vessel.name);
-        setImo(vessel.imo_number);
-        setVesselType(vessel.vessel_type);
+        setImo(vessel.imo_number ?? "");
+        if (vessel.vessel_type) setVesselType(vessel.vessel_type);
         setFlagState(vessel.flag_state ?? "");
         setDwt(vessel.dwt ? String(vessel.dwt) : "");
         setBuiltYear(vessel.built_year ? String(vessel.built_year) : "");

@@ -167,12 +167,12 @@ export default function AdminUsersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs hidden lg:table-cell">
-                    {new Date(user.created_at).toLocaleDateString()}
+                    {new Date(user.created_at!).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => toggleVerify(user.id, user.is_verified)}
+                        onClick={() => toggleVerify(user.id, !!user.is_verified)}
                         disabled={actionLoading === user.id}
                         className={`text-xs px-2.5 py-1 rounded transition-colors ${
                           user.is_verified

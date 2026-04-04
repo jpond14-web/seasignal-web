@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Tables } from '@/lib/supabase/types';
+import { ProfileCompleteness } from '@/components/ui/profile-completeness';
 
 type Profile = Tables<'profiles'>;
 
@@ -246,7 +247,7 @@ export default function DashboardPage() {
             priority: 5,
             icon: '\uD83D\uDCB0',
             title: `Pay report: ${report.rank} on ${report.vessel_type?.replace(/_/g, ' ')}`,
-            description: `$${report.monthly_base_usd.toLocaleString()}/mo (${report.year})`,
+            description: `$${Number(report.monthly_base_usd || 0).toLocaleString()}/mo (${report.year})`,
             timestamp: report.created_at,
             href: '/pay',
             borderClass: '',
@@ -411,6 +412,11 @@ export default function DashboardPage() {
           {' \u00B7 '}
           {signals.length > 0 ? `${signals.length} signal${signals.length > 1 ? 's' : ''}` : 'All quiet'}
         </p>
+      </div>
+
+      {/* Profile Completeness */}
+      <div className="mb-6">
+        <ProfileCompleteness />
       </div>
 
       {/* Port Beacon */}

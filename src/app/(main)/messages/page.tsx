@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -18,13 +18,15 @@ type ConversationWithMeta = {
   description: string | null;
   context_port: string | null;
   updated_at: string;
-  is_encrypted: boolean;
+  is_encrypted: boolean | null;
   last_message_preview: string | null;
   last_message_at: string | null;
   created_by: string | null;
+  max_members: number | null;
   // joined from conversation_members
   is_pinned?: boolean;
   is_archived?: boolean;
+  is_muted?: boolean;
   last_read_at?: string | null;
   unread_count?: number;
   // for DM partner display
@@ -74,6 +76,8 @@ export default function MessagesPage() {
   const [creating, setCreating] = useState(false);
   const [newEncrypted, setNewEncrypted] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [openActionsId, setOpenActionsId] = useState<string | null>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
 
   // Discovery filters
   const [filterDepartment, setFilterDepartment] = useState<DepartmentType | "">("");
@@ -85,6 +89,8 @@ export default function MessagesPage() {
   const [newChannelDesc, setNewChannelDesc] = useState("");
   const [newChannelType, setNewChannelType] = useState<ConversationType>("channel");
   const [creatingChannel, setCreatingChannel] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [channelSearch, setChannelSearch] = useState("");
 
   // Heartbeat: update last_seen_at
   useEffect(() => {
@@ -103,6 +109,19 @@ export default function MessagesPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Close actions dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+        setOpenActionsId(null);
+      }
+    }
+    if (openActionsId) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [openActionsId]);
+
   useEffect(() => { load(); }, []);
 
   const load = useCallback(async () => {
@@ -115,10 +134,31 @@ export default function MessagesPage() {
     // Get user's memberships with pin/archive state
     const { data: memberships } = await supabase
       .from("conversation_members")
-      .select("conversation_id, last_read_at, is_pinned, is_archived")
+      .select("conversation_id, last_read_at, is_pinned, is_archived, is_muted")
       .eq("profile_id", profile.id);
 
-    if (!memberships || memberships.length === 0) { setLoading(false); return; }
+    if (!memberships || memberships.length === 0) {
+      // Auto-join system channels for new users
+      const { data: systemChannels } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("is_system", true);
+
+      if (systemChannels && systemChannels.length > 0) {
+        const joins = systemChannels.map(ch => ({
+          conversation_id: ch.id,
+          profile_id: profile.id,
+          role: "member" as const,
+        }));
+        await supabase.from("conversation_members").insert(joins);
+        // Reload after auto-joining
+        setLoading(false);
+        load();
+        return;
+      }
+      setLoading(false);
+      return;
+    }
 
     const membershipMap = new Map(memberships.map(m => [m.conversation_id, m]));
     const ids = memberships.map((m) => m.conversation_id);
@@ -215,6 +255,7 @@ export default function MessagesPage() {
         ...c,
         is_pinned: membership?.is_pinned || false,
         is_archived: membership?.is_archived || false,
+        is_muted: membership?.is_muted || false,
         last_read_at: membership?.last_read_at,
         unread_count: unreadCountMap.get(c.id) || 0,
         dm_partner_name: partner?.display_name,
@@ -238,7 +279,29 @@ export default function MessagesPage() {
       .select("*")
       .in("type", CHANNEL_TYPES)
       .order("updated_at", { ascending: false });
-    setAllChannels((data as ConversationWithMeta[]) || []);
+
+    if (!data) { setAllChannels([]); return; }
+
+    // Fetch member counts for all browseable channels
+    const channelIds = data.map(c => c.id);
+    const { data: memberRows } = await supabase
+      .from("conversation_members")
+      .select("conversation_id")
+      .in("conversation_id", channelIds);
+
+    const countMap = new Map<string, number>();
+    if (memberRows) {
+      for (const m of memberRows) {
+        countMap.set(m.conversation_id, (countMap.get(m.conversation_id) || 0) + 1);
+      }
+    }
+
+    const enriched = data.map(c => ({
+      ...c,
+      member_count: countMap.get(c.id) || 0,
+    }));
+
+    setAllChannels(enriched as ConversationWithMeta[]);
   }
 
   async function handleSearchUsers(q: string) {
@@ -282,6 +345,37 @@ export default function MessagesPage() {
     if (!profileId || selectedUsers.length === 0) return;
     setCreating(true);
 
+    // For DMs, check if a conversation already exists with this user
+    if (newType === "dm" && selectedUsers.length === 1) {
+      const targetId = selectedUsers[0].id;
+      // Find DM conversations where both users are members
+      const { data: myDmMemberships } = await supabase
+        .from("conversation_members")
+        .select("conversation_id")
+        .eq("profile_id", profileId);
+
+      if (myDmMemberships && myDmMemberships.length > 0) {
+        const myConvoIds = myDmMemberships.map(m => m.conversation_id);
+        const { data: existingDm } = await supabase
+          .from("conversation_members")
+          .select("conversation_id, conversations!inner(type)")
+          .eq("profile_id", targetId)
+          .in("conversation_id", myConvoIds);
+
+        // Find one that's a DM type
+        const dmMatch = existingDm?.find(
+          (m) => (m.conversations as unknown as { type: string })?.type === "dm"
+        );
+        if (dmMatch) {
+          setCreating(false);
+          setShowNew(false);
+          setSelectedUsers([]);
+          router.push(`/messages/${dmMatch.conversation_id}`);
+          return;
+        }
+      }
+    }
+
     const { data: convo, error } = await supabase.from("conversations").insert({
       type: newType,
       name: newType === "group" ? newName || null : null,
@@ -319,6 +413,8 @@ export default function MessagesPage() {
       name: newChannelName.trim(),
       description: newChannelDesc.trim() || null,
       created_by: profileId,
+      access_mode: "open",
+      is_system: false,
     }).select("id").single();
 
     if (error || !convo) { setCreatingChannel(false); return; }
@@ -338,21 +434,22 @@ export default function MessagesPage() {
 
   async function joinChannel(channelId: string) {
     if (!profileId) return;
-    // Check if already a member
-    const { data: existing } = await supabase
-      .from("conversation_members")
-      .select("id")
-      .eq("conversation_id", channelId)
-      .eq("profile_id", profileId)
-      .single();
-    if (!existing) {
-      await supabase.from("conversation_members").insert({
-        conversation_id: channelId,
-        profile_id: profileId,
-        role: "member",
+    try {
+      const res = await fetch("/api/channels/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: channelId }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setJoinError(data.error || "Failed to join channel");
+        return;
+      }
+      setJoinError(null);
+      router.push(`/messages/${channelId}`);
+    } catch {
+      setJoinError("Network error. Please try again.");
     }
-    router.push(`/messages/${channelId}`);
   }
 
   async function togglePin(convoId: string, currentlyPinned: boolean) {
@@ -368,6 +465,15 @@ export default function MessagesPage() {
     if (!profileId) return;
     await supabase.from("conversation_members")
       .update({ is_archived: !currentlyArchived })
+      .eq("conversation_id", convoId)
+      .eq("profile_id", profileId);
+    load();
+  }
+
+  async function toggleMute(convoId: string, currentlyMuted: boolean) {
+    if (!profileId) return;
+    await supabase.from("conversation_members")
+      .update({ is_muted: !currentlyMuted })
       .eq("conversation_id", convoId)
       .eq("profile_id", profileId);
     load();
@@ -401,8 +507,8 @@ export default function MessagesPage() {
   const unreadConvos = activeConvos.filter(c => !c.is_pinned && (c.unread_count || 0) > 0);
   const readConvos = activeConvos.filter(c => !c.is_pinned && (c.unread_count || 0) === 0);
 
-  // Total unread for the nav badge (across all convos)
-  const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+  // Total unread for the nav badge (across all convos, excluding muted)
+  const totalUnread = conversations.reduce((sum, c) => c.is_muted ? sum : sum + (c.unread_count || 0), 0);
 
   // Channels the user has NOT joined (for browsing)
   const joinedChannelIds = new Set(conversations.filter(c => isChannel(c.type)).map(c => c.id));
@@ -411,11 +517,12 @@ export default function MessagesPage() {
   function renderConversationItem(c: ConversationWithMeta) {
     const displayName = c.type === "dm" ? (c.dm_partner_name || "Direct Message") : (c.name || formatType(c.type));
     const hasUnread = (c.unread_count || 0) > 0;
+    const isActionsOpen = openActionsId === c.id;
 
     return (
       <div key={c.id} className="group relative">
         <Link href={`/messages/${c.id}`}
-          className={`block bg-navy-900 border rounded-lg p-4 transition-colors ${
+          className={`block bg-navy-900 border rounded-lg p-4 pr-10 transition-colors ${
             hasUnread ? "border-teal-500/30 bg-navy-900/80" : "border-navy-700 hover:border-navy-600"
           }`}>
           <div className="flex items-center justify-between">
@@ -457,6 +564,13 @@ export default function MessagesPage() {
                       <path d="M4.146.146A.5.5 0 014.5 0h7a.5.5 0 01.5.5c0 .68-.342 1.174-.646 1.479-.126.125-.25.224-.354.298v4.431l.078.048c.203.127.476.314.751.555C12.36 7.775 13 8.527 13 9.5a.5.5 0 01-.5.5H8.5v5.5a.5.5 0 01-1 0V10H3.5a.5.5 0 01-.5-.5c0-.973.64-1.725 1.17-2.189A5.921 5.921 0 015 6.708V2.277a2.77 2.77 0 01-.354-.298C4.342 1.674 4 1.18 4 .5a.5.5 0 01.146-.354z" />
                     </svg>
                   )}
+                  {/* Muted indicator */}
+                  {c.is_muted && (
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" className="text-slate-500 shrink-0" aria-label="Muted">
+                      <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clipRule="evenodd" />
+                      <path d="M12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" />
+                    </svg>
+                  )}
                   {c.is_encrypted && (
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-teal-400 shrink-0">
                       <path fillRule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" clipRule="evenodd" />
@@ -488,27 +602,59 @@ export default function MessagesPage() {
             </div>
           </div>
         </Link>
-        {/* Actions overlay */}
-        <div className="absolute top-2 right-2 hidden group-hover:flex items-center gap-1">
+        {/* More actions button — always visible for mobile, also shown on hover for desktop */}
+        <div className="absolute top-2 right-2" ref={isActionsOpen ? actionsRef : undefined}>
           <button
-            onClick={(e) => { e.preventDefault(); togglePin(c.id, !!c.is_pinned); }}
-            className="p-1.5 rounded bg-navy-800/90 border border-navy-600 text-slate-400 hover:text-teal-400 transition-colors"
-            title={c.is_pinned ? "Unpin" : "Pin"}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenActionsId(isActionsOpen ? null : c.id); }}
+            className={`p-1.5 rounded bg-navy-800/90 border border-navy-600 text-slate-400 hover:text-slate-200 transition-colors ${
+              isActionsOpen ? "text-slate-200" : "md:opacity-0 md:group-hover:opacity-100"
+            }`}
+            aria-label="More actions"
           >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M4.146.146A.5.5 0 014.5 0h7a.5.5 0 01.5.5c0 .68-.342 1.174-.646 1.479-.126.125-.25.224-.354.298v4.431l.078.048c.203.127.476.314.751.555C12.36 7.775 13 8.527 13 9.5a.5.5 0 01-.5.5H8.5v5.5a.5.5 0 01-1 0V10H3.5a.5.5 0 01-.5-.5c0-.973.64-1.725 1.17-2.189A5.921 5.921 0 015 6.708V2.277a2.77 2.77 0 01-.354-.298C4.342 1.674 4 1.18 4 .5a.5.5 0 01.146-.354z" />
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
             </svg>
           </button>
-          <button
-            onClick={(e) => { e.preventDefault(); toggleArchive(c.id, !!c.is_archived); }}
-            className="p-1.5 rounded bg-navy-800/90 border border-navy-600 text-slate-400 hover:text-amber-400 transition-colors"
-            title={c.is_archived ? "Unarchive" : "Archive"}
-          >
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
-              <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
-            </svg>
-          </button>
+          {/* Actions dropdown */}
+          {isActionsOpen && (
+            <div className="absolute top-full right-0 mt-1 w-40 bg-navy-800 border border-navy-600 rounded-lg shadow-lg z-20 py-1 text-sm">
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(c.id, !!c.is_pinned); setOpenActionsId(null); }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-left text-slate-300 hover:bg-navy-700 hover:text-teal-400 transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M4.146.146A.5.5 0 014.5 0h7a.5.5 0 01.5.5c0 .68-.342 1.174-.646 1.479-.126.125-.25.224-.354.298v4.431l.078.048c.203.127.476.314.751.555C12.36 7.775 13 8.527 13 9.5a.5.5 0 01-.5.5H8.5v5.5a.5.5 0 01-1 0V10H3.5a.5.5 0 01-.5-.5c0-.973.64-1.725 1.17-2.189A5.921 5.921 0 015 6.708V2.277a2.77 2.77 0 01-.354-.298C4.342 1.674 4 1.18 4 .5a.5.5 0 01.146-.354z" />
+                </svg>
+                {c.is_pinned ? "Unpin" : "Pin"}
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleMute(c.id, !!c.is_muted); setOpenActionsId(null); }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-left text-slate-300 hover:bg-navy-700 hover:text-teal-400 transition-colors"
+              >
+                {c.is_muted ? (
+                  <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clipRule="evenodd" />
+                    <path d="M12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" />
+                  </svg>
+                )}
+                {c.is_muted ? "Unmute" : "Mute"}
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleArchive(c.id, !!c.is_archived); setOpenActionsId(null); }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-left text-slate-300 hover:bg-navy-700 hover:text-amber-400 transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                  <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
+                </svg>
+                {c.is_archived ? "Unarchive" : "Archive"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -662,24 +808,7 @@ export default function MessagesPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-between mt-4 mb-1">
-            <label htmlFor="encrypt-toggle" className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className={`w-3.5 h-3.5 ${newEncrypted ? "text-teal-400" : "text-slate-500"}`}>
-                <path fillRule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" clipRule="evenodd" />
-              </svg>
-              End-to-end encrypted (keys stored in this browser only)
-            </label>
-            <button
-              id="encrypt-toggle"
-              type="button"
-              role="switch"
-              aria-checked={newEncrypted}
-              onClick={() => setNewEncrypted((v) => !v)}
-              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${newEncrypted ? "bg-teal-500" : "bg-navy-600"}`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${newEncrypted ? "translate-x-[18px]" : "translate-x-[3px]"}`} />
-            </button>
-          </div>
+          {/* E2E encryption toggle removed — key exchange not yet implemented */}
 
           <button onClick={createConversation} disabled={creating || selectedUsers.length === 0}
             className="mt-3 px-4 py-2 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors">
@@ -709,24 +838,87 @@ export default function MessagesPage() {
             {creatingChannel ? "Creating..." : "Create Channel"}
           </button>
 
+          {/* Join error message */}
+          {joinError && (
+            <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-300 flex items-start gap-2">
+              <svg className="w-4 h-4 text-red-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <span>{joinError}</span>
+              <button onClick={() => setJoinError(null)} className="ml-auto text-red-400 hover:text-red-300">✕</button>
+            </div>
+          )}
+
           {/* Discoverable channels */}
           {unjoinedChannels.length > 0 && (
             <>
-              <h3 className="text-sm font-semibold text-slate-200 mt-5 mb-3">Browse Public Channels</h3>
+              <h3 className="text-sm font-semibold text-slate-200 mt-5 mb-3">Browse Channels</h3>
+              <input
+                type="text"
+                placeholder="Search channels..."
+                value={channelSearch}
+                onChange={e => setChannelSearch(e.target.value)}
+                className="w-full mb-2 px-3 py-2 bg-navy-800 border border-navy-700 rounded-lg text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-teal-500/50"
+              />
               <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                {unjoinedChannels.map(ch => (
+                {unjoinedChannels.filter(ch => {
+                  if (!channelSearch.trim()) return true;
+                  const name = ch.name || "";
+                  return name.toLowerCase().includes(channelSearch.toLowerCase());
+                }).map(ch => {
+                  const isFull = !!(ch.max_members && ch.max_members > 0 && (ch.member_count || 0) >= ch.max_members);
+                  return (
                   <div key={ch.id} className="flex items-center justify-between px-3 py-2.5 bg-navy-800 border border-navy-700 rounded-lg">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-200 truncate">{ch.name || formatType(ch.type)}</p>
-                      {ch.description && <p className="text-xs text-slate-500 truncate">{ch.description}</p>}
-                      <p className="text-[10px] text-slate-500 mt-0.5">{formatType(ch.type)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-200 truncate">{ch.name || formatType(ch.type)}</p>
+                        {ch.type === "vessel_channel" && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
+                            <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                            Crew Only
+                          </span>
+                        )}
+                        {ch.type === "company_channel" && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
+                            <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2H4a1 1 0 110-2V4z" clipRule="evenodd" /></svg>
+                            Company
+                          </span>
+                        )}
+                        {ch.type === "port_channel" && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20 rounded">
+                            Open
+                          </span>
+                        )}
+                        {Boolean((ch as Record<string, unknown>).is_system) && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded">
+                            Official
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {ch.description && <p className="text-xs text-slate-500 truncate">{ch.description}</p>}
+                        {(ch.member_count !== undefined && ch.member_count > 0) && (
+                          <span className="text-[10px] text-slate-500 shrink-0">
+                            {ch.max_members && ch.max_members > 0
+                              ? `${ch.member_count}/${ch.max_members} members`
+                              : `${ch.member_count} members`}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <button onClick={() => joinChannel(ch.id)}
-                      className="ml-3 px-3 py-1 bg-teal-500/15 text-teal-400 hover:bg-teal-500/25 text-xs font-medium rounded transition-colors">
-                      Join
-                    </button>
+                    {isFull ? (
+                      <span className="ml-3 px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium rounded shrink-0">
+                        Full
+                      </span>
+                    ) : (
+                      <button onClick={() => joinChannel(ch.id)}
+                        className="ml-3 px-3 py-1 bg-teal-500/15 text-teal-400 hover:bg-teal-500/25 text-xs font-medium rounded transition-colors shrink-0">
+                        Join
+                      </button>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}

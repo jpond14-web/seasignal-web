@@ -185,7 +185,7 @@ export default function JobDetailPage() {
                   </Link>
                 )}
               </div>
-              <span className={`text-xs px-2 py-1 rounded font-medium ${STATUS_COLORS[job.status] || "bg-navy-800 text-slate-400"}`}>
+              <span className={`text-xs px-2 py-1 rounded font-medium ${STATUS_COLORS[job.status ?? "active"] || "bg-navy-800 text-slate-400"}`}>
                 {formatEnum(job.status)}
               </span>
             </div>
@@ -210,7 +210,7 @@ export default function JobDetailPage() {
 
             {(job.salary_min || job.salary_max) && (
               <p className="text-emerald-400 font-mono font-semibold text-lg mt-4">
-                {formatSalary(job.salary_min, job.salary_max, job.currency)}
+                {formatSalary(job.salary_min as number | null, job.salary_max as number | null, job.currency ?? "USD")}
                 <span className="text-slate-500 text-sm font-normal ml-1">/month</span>
               </p>
             )}
@@ -365,11 +365,11 @@ export default function JobDetailPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[app.status] || "bg-navy-700 text-slate-400"}`}>
-                          {formatEnum(app.status)}
+                        <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[app.status ?? "pending"] || "bg-navy-700 text-slate-400"}`}>
+                          {formatEnum(app.status ?? "pending")}
                         </span>
                         <select
-                          value={app.status}
+                          value={app.status ?? "pending"}
                           onChange={(e) => handleUpdateAppStatus(app.id, e.target.value)}
                           className="bg-navy-700 border border-navy-600 rounded text-xs text-slate-300 px-2 py-1 focus:outline-none focus:border-teal-500"
                         >

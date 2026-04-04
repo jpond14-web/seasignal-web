@@ -89,10 +89,11 @@ export default function PayPage() {
       .from("profiles").select("id").eq("auth_user_id", user.id).single();
     if (!profile) { setSubmitMsg({ type: "error", text: "Profile not found" }); setSubmitting(false); return; }
 
-    const { error } = await supabase.from("pay_reports").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("pay_reports") as any).insert({
       profile_id: profile.id,
       rank: form.rank,
-      vessel_type: form.vessel_type as Enums<"vessel_type">,
+      vessel_type: form.vessel_type,
       flag_state: form.flag_state || null,
       company_id: form.company_id || null,
       monthly_base_usd: Number(form.monthly_base_usd),

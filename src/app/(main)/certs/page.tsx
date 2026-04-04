@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
+import { parseCertCsv, type ParsedCertRow } from "@/lib/utils/certCsvParser";
 import type { Tables, Enums } from "@/lib/supabase/types";
 
 const certTypes: { value: Enums<"cert_type">; label: string }[] = [
@@ -75,6 +77,215 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
+/* ─── CSV Import Modal ─── */
+
+function CertCsvImportModal({
+  profileId,
+  onClose,
+  onSuccess,
+}: {
+  profileId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const supabase = createClient();
+  const { showToast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [parsed, setParsed] = useState<{ valid: ParsedCertRow[]; errors: { row: number; message: string }[] } | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  function downloadTemplate() {
+    const csv = `cert_type,title,cert_number,issuing_authority,flag_state,issue_date,expiry_date\ncoc,Master Unlimited,MC-12345,MCA,United Kingdom,2024-03-01,2029-03-01\nstcw,Basic Safety Training,BST-9876,MARINA,Philippines,2023-06-15,2028-06-15\nmedical,ENG1 Medical,ENG1-4567,MCA,United Kingdom,2025-01-10,2027-01-10`;
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "certificates_template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      setParsed(parseCertCsv(text));
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleImport() {
+    if (!parsed || parsed.valid.length === 0) return;
+    setImporting(true);
+
+    const rows = parsed.valid.map((r) => ({
+      profile_id: profileId,
+      cert_type: r.cert_type as "coc" | "stcw" | "medical" | "visa" | "endorsement" | "short_course" | "flag_state" | "gmdss" | "other",
+      title: r.title,
+      cert_number: r.cert_number || null,
+      issuing_authority: r.issuing_authority || null,
+      flag_state: r.flag_state || null,
+      issue_date: r.issue_date || null,
+      expiry_date: r.expiry_date || null,
+    }));
+
+    const { error } = await supabase.from("certificates").insert(rows);
+    setImporting(false);
+
+    if (error) {
+      showToast(error.message, "error");
+    } else {
+      showToast(`Imported ${rows.length} certificate${rows.length !== 1 ? "s" : ""} successfully`);
+      onSuccess();
+      onClose();
+    }
+  }
+
+  function formatCertType(val: string): string {
+    const match = certTypes.find((t) => t.value === val);
+    return match ? match.label : val.toUpperCase();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-navy-900 border border-navy-700 rounded-xl shadow-2xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-100">Import Certificates from CSV</h2>
+          <button
+            onClick={onClose}
+            className="p-1 text-slate-400 hover:text-slate-200 transition-colors"
+            aria-label="Close modal"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <p className="text-sm text-slate-400 mb-4">
+          Import multiple certificates at once from a CSV file.
+        </p>
+
+        <div className="flex flex-wrap gap-3 mb-5">
+          <button
+            onClick={downloadTemplate}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-teal-400 border border-teal-500/30 rounded hover:bg-teal-500/10 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download Template
+          </button>
+
+          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-300 border border-navy-600 rounded hover:bg-navy-800 transition-colors cursor-pointer">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Choose CSV File
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv"
+              onChange={handleFile}
+              className="hidden"
+            />
+          </label>
+        </div>
+
+        {parsed && (
+          <>
+            {/* Valid rows preview */}
+            {parsed.valid.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-medium text-green-400 mb-2">
+                  {parsed.valid.length} valid certificate{parsed.valid.length !== 1 ? "s" : ""}
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-navy-700 text-slate-500">
+                        <th className="pb-2 pr-3">Type</th>
+                        <th className="pb-2 pr-3">Title</th>
+                        <th className="pb-2 pr-3">Number</th>
+                        <th className="pb-2 pr-3">Authority</th>
+                        <th className="pb-2 pr-3">Flag</th>
+                        <th className="pb-2 pr-3">Issued</th>
+                        <th className="pb-2">Expiry</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsed.valid.map((r, i) => (
+                        <tr key={i} className="border-b border-navy-800 text-slate-300">
+                          <td className="py-1.5 pr-3">
+                            <span className="px-1.5 py-0.5 bg-navy-800 border border-navy-600 rounded text-slate-400 uppercase text-[10px]">
+                              {r.cert_type}
+                            </span>
+                          </td>
+                          <td className="py-1.5 pr-3 font-medium">{r.title}</td>
+                          <td className="py-1.5 pr-3 font-mono">{r.cert_number || "--"}</td>
+                          <td className="py-1.5 pr-3">{r.issuing_authority || "--"}</td>
+                          <td className="py-1.5 pr-3">{r.flag_state || "--"}</td>
+                          <td className="py-1.5 pr-3">{r.issue_date || "--"}</td>
+                          <td className="py-1.5">{r.expiry_date || "--"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Error rows */}
+            {parsed.errors.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-medium text-red-400 mb-2">
+                  {parsed.errors.length} error{parsed.errors.length !== 1 ? "s" : ""}
+                </p>
+                <ul className="space-y-1">
+                  {parsed.errors.map((err, i) => (
+                    <li key={i} className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded px-3 py-1.5">
+                      Row {err.row}: {err.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Import button */}
+            {parsed.valid.length > 0 && (
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={handleImport}
+                  disabled={importing}
+                  className="px-5 py-2 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors"
+                >
+                  {importing ? "Importing..." : `Import All (${parsed.valid.length})`}
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-navy-800 border border-navy-600 rounded hover:bg-navy-700 text-slate-300 text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CertsPage() {
   const supabase = createClient();
   const [certs, setCerts] = useState<Tables<"certificates">[]>([]);
@@ -97,6 +308,7 @@ export default function CertsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [showCsvModal, setShowCsvModal] = useState(false);
 
   useEffect(() => {
     // Check if we have cached data on mount
@@ -251,12 +463,20 @@ export default function CertsPage() {
             </span>
           )}
         </div>
-        <button
-          onClick={() => { resetForm(); setShowForm(true); }}
-          className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-navy-950 font-medium rounded text-sm transition-colors"
-        >
-          + Add Certificate
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCsvModal(true)}
+            className="px-4 py-2 bg-navy-800 border border-navy-600 hover:bg-navy-700 text-slate-300 font-medium rounded text-sm transition-colors"
+          >
+            Import CSV
+          </button>
+          <button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            className="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-navy-950 font-medium rounded text-sm transition-colors"
+          >
+            + Add Certificate
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -388,7 +608,7 @@ export default function CertsPage() {
           {certs.map((cert) => {
             const days = daysUntilExpiry(cert.expiry_date);
             return (
-              <div key={cert.id} className={`bg-navy-900 border rounded-lg p-4 ${statusColors[cert.status] || "border-navy-700"}`}>
+              <div key={cert.id} className={`bg-navy-900 border rounded-lg p-4 ${statusColors[cert.status ?? "valid"] || "border-navy-700"}`}>
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2">
@@ -430,6 +650,15 @@ export default function CertsPage() {
             );
           })}
         </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {showCsvModal && profileId && (
+        <CertCsvImportModal
+          profileId={profileId}
+          onClose={() => setShowCsvModal(false)}
+          onSuccess={() => loadCerts()}
+        />
       )}
     </div>
   );

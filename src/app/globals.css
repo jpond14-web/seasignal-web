@@ -54,6 +54,60 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Light theme overrides */
+[data-theme="light"] body {
+  background-color: #FFFFFF;
+  color: #0F172A;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+[data-theme="light"] .card-base {
+  background-color: #F8FAFC;
+  border-color: #E2E8F0;
+}
+[data-theme="light"] .card-hover:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.08);
+}
+
+[data-theme="light"] .btn-primary {
+  background: linear-gradient(135deg, #0EA5E9, #0284C7);
+}
+[data-theme="light"] .btn-primary:hover {
+  background: linear-gradient(135deg, #38BDF8, #0EA5E9);
+  box-shadow: 0 0 16px rgba(14, 165, 233, 0.2);
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Light theme: remap navy/slate Tailwind color variables */
+[data-theme="light"] {
+  --color-navy-950: #FFFFFF;
+  --color-navy-900: #F8FAFC;
+  --color-navy-800: #F1F5F9;
+  --color-navy-700: #E2E8F0;
+  --color-navy-600: #CBD5E1;
+  --color-navy-500: #94A3B8;
+
+  --color-slate-100: #0F172A;
+  --color-slate-200: #1E293B;
+  --color-slate-300: #334155;
+  --color-slate-400: #475569;
+  --color-slate-500: #64748B;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

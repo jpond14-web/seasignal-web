@@ -232,7 +232,7 @@ export default function AdminForumsPage() {
                       <p className="text-sm text-slate-400 mt-0.5">{cat.description}</p>
                     )}
                     <p className="text-xs text-slate-500 mt-1">
-                      slug: {cat.slug} -- {cat.post_count} posts
+                      slug: {cat.slug} -- {(cat as Record<string, unknown>).post_count as number ?? 0} posts
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-4">

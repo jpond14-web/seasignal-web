@@ -206,7 +206,7 @@ export default function JobsPage() {
                 <div className="text-right shrink-0">
                   {(job.salary_min || job.salary_max) && (
                     <p className="text-emerald-400 font-mono font-semibold text-sm">
-                      {formatSalary(job.salary_min, job.salary_max, job.currency)}
+                      {formatSalary(job.salary_min as number | null, job.salary_max as number | null, job.currency ?? "USD")}
                     </p>
                   )}
                   {job.embarkation_port && (

@@ -75,7 +75,7 @@ export default function AdminIncidentsPage() {
                       </p>
                     )}
                     <p className="text-xs text-slate-500">
-                      Reported: {new Date(inc.created_at).toLocaleDateString()}
+                      Reported: {new Date(inc.created_at!).toLocaleDateString()}
                     </p>
                   </div>
                 </div>

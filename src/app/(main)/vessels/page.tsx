@@ -121,7 +121,7 @@ export default function VesselsPage() {
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs font-mono text-slate-500">IMO {v.imo_number}</span>
                     <span className="text-xs px-2 py-0.5 bg-navy-800 border border-navy-600 rounded text-slate-400">
-                      {formatEnum(v.vessel_type)}
+                      {formatEnum(v.vessel_type || "other")}
                     </span>
                     {v.flag_state && (
                       <span className="text-xs text-slate-500">{v.flag_state}</span>

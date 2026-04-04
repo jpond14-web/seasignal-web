@@ -106,7 +106,7 @@ export default function AdminDashboardPage() {
             type: "signup",
             label: p.display_name,
             detail: "New signup",
-            date: p.created_at,
+            date: p.created_at || new Date().toISOString(),
           });
         }
       }
@@ -116,8 +116,8 @@ export default function AdminDashboardPage() {
             id: `review-${r.id}`,
             type: "review",
             label: r.review_type + " review",
-            detail: r.status,
-            date: r.created_at,
+            detail: r.status || "pending",
+            date: r.created_at || new Date().toISOString(),
           });
         }
       }
@@ -128,7 +128,7 @@ export default function AdminDashboardPage() {
             type: "incident",
             label: inc.title,
             detail: inc.category,
-            date: inc.created_at,
+            date: inc.created_at || new Date().toISOString(),
           });
         }
       }

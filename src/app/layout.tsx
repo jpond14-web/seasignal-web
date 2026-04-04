@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
 import { FontSizeProvider } from "@/components/layout/FontSizeProvider";
+import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -41,7 +42,9 @@ export default function RootLayout({
       <body className="min-h-full bg-navy-950 text-slate-100 antialiased">
         <ToastProvider>
           <FontSizeProvider>
-            {children}
+            <ThemeProvider>
+              {children}
+            </ThemeProvider>
           </FontSizeProvider>
         </ToastProvider>
         <script

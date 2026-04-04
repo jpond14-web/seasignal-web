@@ -6,6 +6,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { UnreadBadge } from "./unread-badge";
 import { NotificationBell } from "./notification-bell";
+import { GlobalSearch, SearchTrigger } from "@/components/ui/global-search";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge: boolean };
 type NavSection = { label: string; items: NavItem[] };
@@ -71,6 +72,7 @@ export function Sidebar({ userInitial = "U", isAdmin = false, avatarUrl }: { use
         collapsed ? "w-16" : "w-56"
       }`}
     >
+      <GlobalSearch />
       <div className="flex items-center gap-2 px-4 h-14 border-b border-navy-700">
         <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
           <span className="text-teal-500 font-bold text-lg shrink-0">⚓</span>
@@ -79,6 +81,7 @@ export function Sidebar({ userInitial = "U", isAdmin = false, avatarUrl }: { use
           )}
         </Link>
         <div className="ml-auto flex items-center gap-1">
+          <SearchTrigger collapsed={collapsed} />
           <NotificationBell />
           <button
             onClick={() => setCollapsed(!collapsed)}
@@ -217,12 +220,14 @@ export function MobileNav({ userInitial = "U", isAdmin = false, avatarUrl }: { u
 
   return (
     <>
+      <GlobalSearch />
       <header className="md:hidden flex items-center justify-between px-4 h-14 bg-navy-900 border-b border-navy-700">
         <Link href="/dashboard" className="flex items-center gap-2">
           <span className="text-teal-500 font-bold text-lg">⚓</span>
           <span className="font-bold text-slate-100">SeaSignal</span>
         </Link>
         <div className="flex items-center gap-2">
+          <SearchTrigger />
           <NotificationBell />
           <button
             onClick={() => setOpen(!open)}

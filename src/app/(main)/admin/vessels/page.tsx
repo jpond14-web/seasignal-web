@@ -120,7 +120,7 @@ export default function AdminVesselsPage() {
                   <td className="px-4 py-3 text-slate-400 font-mono text-xs hidden md:table-cell">{v.imo_number}</td>
                   <td className="px-4 py-3">
                     <span className="text-xs px-2 py-0.5 bg-navy-800 border border-navy-600 rounded text-slate-400 capitalize">
-                      {v.vessel_type.replace(/_/g, " ")}
+                      {(v.vessel_type || "other").replace(/_/g, " ")}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate-400 hidden md:table-cell">{v.flag_state ?? "-"}</td>
