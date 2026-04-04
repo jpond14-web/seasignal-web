@@ -24,6 +24,7 @@ export type Database = {
           subscription_tier: Database["public"]["Enums"]["subscription_tier"];
           bio: string | null;
           home_port: string | null;
+          last_seen_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -41,6 +42,7 @@ export type Database = {
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"];
           bio?: string | null;
           home_port?: string | null;
+          last_seen_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -58,6 +60,7 @@ export type Database = {
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"];
           bio?: string | null;
           home_port?: string | null;
+          last_seen_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -316,11 +319,16 @@ export type Database = {
           id: string;
           type: Database["public"]["Enums"]["conversation_type"];
           name: string | null;
+          description: string | null;
           context_vessel_id: string | null;
           context_company_id: string | null;
           context_port: string | null;
           is_encrypted: boolean;
           auto_expire_hours: number | null;
+          max_members: number | null;
+          created_by: string | null;
+          last_message_preview: string | null;
+          last_message_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -328,20 +336,30 @@ export type Database = {
           id?: string;
           type: Database["public"]["Enums"]["conversation_type"];
           name?: string | null;
+          description?: string | null;
           context_vessel_id?: string | null;
           context_company_id?: string | null;
           context_port?: string | null;
           is_encrypted?: boolean;
           auto_expire_hours?: number | null;
+          max_members?: number | null;
+          created_by?: string | null;
+          last_message_preview?: string | null;
+          last_message_at?: string | null;
         };
         Update: {
           type?: Database["public"]["Enums"]["conversation_type"];
           name?: string | null;
+          description?: string | null;
           context_vessel_id?: string | null;
           context_company_id?: string | null;
           context_port?: string | null;
           is_encrypted?: boolean;
           auto_expire_hours?: number | null;
+          max_members?: number | null;
+          created_by?: string | null;
+          last_message_preview?: string | null;
+          last_message_at?: string | null;
         };
         Relationships: [];
       };
@@ -353,6 +371,8 @@ export type Database = {
           role: string;
           last_read_at: string | null;
           is_muted: boolean;
+          is_pinned: boolean;
+          is_archived: boolean;
           joined_at: string;
         };
         Insert: {
@@ -362,11 +382,15 @@ export type Database = {
           role?: string;
           last_read_at?: string | null;
           is_muted?: boolean;
+          is_pinned?: boolean;
+          is_archived?: boolean;
         };
         Update: {
           role?: string;
           last_read_at?: string | null;
           is_muted?: boolean;
+          is_pinned?: boolean;
+          is_archived?: boolean;
         };
         Relationships: [];
       };
@@ -379,6 +403,8 @@ export type Database = {
           plaintext: string | null;
           message_type: Database["public"]["Enums"]["message_type"];
           reply_to_id: string | null;
+          reactions: Json;
+          attachments: Json;
           expires_at: string | null;
           created_at: string;
         };
@@ -390,6 +416,8 @@ export type Database = {
           plaintext?: string | null;
           message_type?: Database["public"]["Enums"]["message_type"];
           reply_to_id?: string | null;
+          reactions?: Json;
+          attachments?: Json;
           expires_at?: string | null;
         };
         Update: {
@@ -397,6 +425,8 @@ export type Database = {
           plaintext?: string | null;
           message_type?: Database["public"]["Enums"]["message_type"];
           reply_to_id?: string | null;
+          reactions?: Json;
+          attachments?: Json;
           expires_at?: string | null;
         };
         Relationships: [];
@@ -557,7 +587,7 @@ export type Database = {
       cert_status: "valid" | "expiring" | "expired";
       review_type: "company" | "vessel" | "manning_agency";
       review_status: "pending" | "published" | "flagged" | "removed";
-      conversation_type: "dm" | "group" | "vessel_channel" | "company_channel" | "port_channel";
+      conversation_type: "dm" | "group" | "vessel_channel" | "company_channel" | "port_channel" | "channel";
       message_type: "text" | "image" | "file" | "system";
       incident_category: "safety" | "maintenance" | "wages" | "harassment" | "contract" | "other";
       subscription_tier: "free" | "premium";

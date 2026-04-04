@@ -4,20 +4,21 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { UnreadBadge } from "./unread-badge";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
-  { href: "/companies", label: "Companies", icon: CompanyIcon },
-  { href: "/vessels", label: "Vessels", icon: VesselIcon },
-  { href: "/pay", label: "Pay", icon: PayIcon },
-  { href: "/certs", label: "Certs", icon: CertIcon },
-  { href: "/messages", label: "Messages", icon: MessageIcon },
-  { href: "/forums", label: "Forums", icon: ForumIcon },
-  { href: "/incidents", label: "Incidents", icon: IncidentIcon },
-  { href: "/rights", label: "Rights", icon: RightsIcon },
+  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, badge: false },
+  { href: "/companies", label: "Companies", icon: CompanyIcon, badge: false },
+  { href: "/vessels", label: "Vessels", icon: VesselIcon, badge: false },
+  { href: "/pay", label: "Pay", icon: PayIcon, badge: false },
+  { href: "/certs", label: "Certs", icon: CertIcon, badge: false },
+  { href: "/messages", label: "Messages", icon: MessageIcon, badge: true },
+  { href: "/forums", label: "Forums", icon: ForumIcon, badge: false },
+  { href: "/incidents", label: "Incidents", icon: IncidentIcon, badge: false },
+  { href: "/rights", label: "Rights", icon: RightsIcon, badge: false },
 ];
 
-export function Sidebar({ userInitial = "U" }: { userInitial?: string }) {
+export function Sidebar({ userInitial = "U", isAdmin = false }: { userInitial?: string; isAdmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -72,12 +73,28 @@ export function Sidebar({ userInitial = "U" }: { userInitial?: string }) {
               aria-current={isActive ? "page" : undefined}
             >
               <item.icon className="w-5 h-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span className="flex-1">{item.label}</span>}
+              {item.badge && <UnreadBadge />}
             </Link>
           );
         })}
       </nav>
       <div className="border-t border-navy-700 p-2 flex flex-col gap-0.5">
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
+              pathname.startsWith("/admin")
+                ? "text-teal-400 bg-navy-800"
+                : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
+            }`}
+            title={collapsed ? "Admin" : undefined}
+            aria-label="Admin"
+          >
+            <AdminIcon className="w-5 h-5 shrink-0" />
+            {!collapsed && <span>Admin</span>}
+          </Link>
+        )}
         <Link
           href="/settings"
           className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
@@ -120,7 +137,7 @@ export function Sidebar({ userInitial = "U" }: { userInitial?: string }) {
   );
 }
 
-export function MobileNav({ userInitial = "U" }: { userInitial?: string }) {
+export function MobileNav({ userInitial = "U", isAdmin = false }: { userInitial?: string; isAdmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -169,11 +186,26 @@ export function MobileNav({ userInitial = "U" }: { userInitial?: string }) {
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge && <UnreadBadge />}
                 </Link>
               );
             })}
             <hr className="border-navy-700 my-2" />
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  pathname.startsWith("/admin")
+                    ? "text-teal-400 bg-navy-800"
+                    : "text-slate-300 hover:bg-navy-800/50"
+                }`}
+              >
+                <AdminIcon className="w-5 h-5" />
+                <span>Admin</span>
+              </Link>
+            )}
             <Link
               href="/settings"
               onClick={() => setOpen(false)}
@@ -296,6 +328,14 @@ function SettingsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.062 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function AdminIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
     </svg>
   );
 }
