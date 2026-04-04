@@ -43,18 +43,18 @@ function applyThemeAttribute(resolved: ResolvedTheme) {
   document.documentElement.setAttribute("data-theme", resolved);
 }
 
+function getInitialTheme(): Theme {
+  const saved = getCookie("seasignal_theme") as Theme | null;
+  return saved && VALID_THEMES.includes(saved) ? saved : "dark";
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(getInitialTheme()));
 
   useEffect(() => {
-    const saved = getCookie("seasignal_theme") as Theme | null;
-    const initial = saved && VALID_THEMES.includes(saved) ? saved : "dark";
-    const resolved = resolveTheme(initial);
-    setThemeState(initial);
-    setResolvedTheme(resolved);
-    applyThemeAttribute(resolved);
-  }, []);
+    applyThemeAttribute(resolvedTheme);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for system theme changes when theme is "system"
   useEffect(() => {

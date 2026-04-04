@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { logAdminAction } from "@/lib/auditLog";
 import type { Tables, Enums } from "@/lib/supabase/types";
 
 type Profile = Tables<"profiles">;
@@ -29,6 +30,23 @@ export default function AdminUsersPage() {
   const [rankFilter, setRankFilter] = useState("");
   const [verifiedFilter, setVerifiedFilter] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [adminProfileId, setAdminProfileId] = useState<string | null>(null);
+
+  // Fetch current admin's profile ID
+  useEffect(() => {
+    async function fetchAdminId() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("auth_user_id", user.id)
+          .single();
+        if (profile) setAdminProfileId(profile.id);
+      }
+    }
+    fetchAdminId();
+  }, [supabase]);
 
   useEffect(() => {
     async function load() {
@@ -69,6 +87,39 @@ export default function AdminUsersPage() {
     setUsers((prev) =>
       prev.map((u) =>
         u.id === userId ? { ...u, is_verified: !currentlyVerified } : u
+      )
+    );
+    setActionLoading(null);
+  }
+
+  async function toggleAdmin(userId: string, currentlyAdmin: boolean) {
+    if (userId === adminProfileId) {
+      window.alert("You cannot change your own admin status.");
+      return;
+    }
+    const confirmText = currentlyAdmin
+      ? "Remove admin privileges from this user?"
+      : "Grant admin privileges to this user?";
+    if (!window.confirm(confirmText)) return;
+
+    setActionLoading(userId);
+    await supabase
+      .from("profiles")
+      .update({ is_admin: !currentlyAdmin })
+      .eq("id", userId);
+
+    if (adminProfileId) {
+      await logAdminAction(
+        adminProfileId,
+        currentlyAdmin ? "remove_admin" : "make_admin",
+        "user",
+        userId
+      );
+    }
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, is_admin: !currentlyAdmin } : u
       )
     );
     setActionLoading(null);
@@ -156,15 +207,22 @@ export default function AdminUsersPage() {
                     {user.experience_band?.replace(/_/g, " ").replace("y", "yr") ?? "-"}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        user.is_verified
-                          ? "bg-green-500/10 text-green-400 border border-green-500/30"
-                          : "bg-amber-500/10 text-amber-400 border border-amber-500/30"
-                      }`}
-                    >
-                      {user.is_verified ? "Verified" : "Unverified"}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          user.is_verified
+                            ? "bg-green-500/10 text-green-400 border border-green-500/30"
+                            : "bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                        }`}
+                      >
+                        {user.is_verified ? "Verified" : "Unverified"}
+                      </span>
+                      {user.is_admin && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30">
+                          Admin
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs hidden lg:table-cell">
                     {new Date(user.created_at!).toLocaleDateString()}
@@ -186,6 +244,23 @@ export default function AdminUsersPage() {
                           ? "Unverify"
                           : "Verify"}
                       </button>
+                      {user.id !== adminProfileId && user.is_verified && (
+                        <button
+                          onClick={() => toggleAdmin(user.id, !!user.is_admin)}
+                          disabled={actionLoading === user.id}
+                          className={`text-xs px-2.5 py-1 rounded transition-colors ${
+                            user.is_admin
+                              ? "bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                              : "bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
+                          } disabled:opacity-50`}
+                        >
+                          {actionLoading === user.id
+                            ? "..."
+                            : user.is_admin
+                            ? "Remove Admin"
+                            : "Make Admin"}
+                        </button>
+                      )}
                       <Link
                         href={`/profile?id=${user.id}`}
                         className="text-xs px-2.5 py-1 rounded bg-navy-800 border border-navy-600 text-slate-400 hover:text-slate-100 transition-colors"

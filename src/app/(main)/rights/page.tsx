@@ -49,7 +49,7 @@ export default function RightsPage() {
           <div className="bg-navy-900 border border-navy-700 rounded-lg p-5">
             <h2 className="text-lg font-semibold text-slate-100 mb-3">Maritime Labour Convention 2006</h2>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              The MLC is the global standard for seafarers' rights. Ratified by over 100 countries,
+              The MLC is the global standard for seafarers&apos; rights. Ratified by over 100 countries,
               it sets minimum requirements for working conditions, health, safety, and welfare of seafarers.
             </p>
             <div className="space-y-3">

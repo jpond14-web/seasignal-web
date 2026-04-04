@@ -26,10 +26,12 @@ export async function sendEmail({
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    console.log(
-      `[email] RESEND_API_KEY not set — logging email instead:\n` +
-        `  To: ${to}\n  Subject: ${subject}\n  Body length: ${html.length} chars`
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `[email] RESEND_API_KEY not set — logging email instead:\n` +
+          `  To: ${to}\n  Subject: ${subject}\n  Body length: ${html.length} chars`
+      );
+    }
     return { success: true };
   }
 
@@ -50,14 +52,14 @@ export async function sendEmail({
 
     if (!res.ok) {
       const body = await res.text();
-      console.error(`[email] Resend API error (${res.status}):`, body);
+      // TODO: send to error reporting service (e.g. Sentry)
       return { success: false, error: `Resend API ${res.status}: ${body}` };
     }
 
     return { success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[email] Failed to send:", message);
+    // TODO: send to error reporting service (e.g. Sentry)
     return { success: false, error: message };
   }
 }

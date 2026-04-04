@@ -14,7 +14,6 @@ type MessageInputProps = {
   onCancelEdit: () => void;
   sending: boolean;
   uploading: boolean;
-  isEncrypted: boolean;
   onTyping: () => void;
   uploadError: string | null;
   onDismissUploadError: () => void;
@@ -33,7 +32,6 @@ export default function MessageInput({
   onCancelEdit,
   sending,
   uploading,
-  isEncrypted,
   onTyping,
   uploadError,
   onDismissUploadError,
@@ -106,7 +104,7 @@ export default function MessageInput({
           type="text"
           value={value}
           onChange={(e) => { onChange(e.target.value); onTyping(); }}
-          placeholder={editingMsg ? "Edit your message..." : isEncrypted ? "Type an encrypted message..." : "Type a message..."}
+          placeholder={editingMsg ? "Edit your message..." : "Type a message..."}
           aria-label={editingMsg ? "Edit message text" : "Message text"}
           className={`flex-1 px-3 py-2.5 bg-navy-800 border rounded text-slate-100 placeholder:text-slate-500 text-sm focus:outline-none ${
             editingMsg ? "border-teal-500/50 focus:border-teal-500" : "border-navy-600 focus:border-teal-500"

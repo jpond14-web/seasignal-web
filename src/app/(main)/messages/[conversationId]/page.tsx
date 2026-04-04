@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
-import {
-  getOrCreateConversationKey,
-  encrypt,
-  decrypt,
-} from "@/lib/crypto";
 import type { Json } from "@/lib/supabase/types";
 import type { Message, Reactions, MemberProfile } from "@/components/messages/types";
+import { logAdminAction } from "@/lib/auditLog";
 import ConversationHeader from "@/components/messages/ConversationHeader";
 import MessageSearch from "@/components/messages/MessageSearch";
 import MessageBubble from "@/components/messages/MessageBubble";
@@ -26,7 +22,6 @@ export default function ConversationPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [decryptedTexts, setDecryptedTexts] = useState<Record<string, string>>({});
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [profileName, setProfileName] = useState("");
@@ -35,8 +30,6 @@ export default function ConversationPage() {
   const [convoName, setConvoName] = useState("");
   const [convoType, setConvoType] = useState("");
   const [convoDescription, setConvoDescription] = useState("");
-  const [isEncrypted, setIsEncrypted] = useState(false);
-  const [cryptoKey, setCryptoKey] = useState<CryptoKey | null>(null);
   const [members, setMembers] = useState<MemberProfile[]>([]);
 
   // Reply state
@@ -81,27 +74,6 @@ export default function ConversationPage() {
   // File upload error state
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Decrypt all encrypted messages whenever messages or key change
-  const decryptMessages = useCallback(
-    async (msgs: Message[], key: CryptoKey | null) => {
-      if (!key) return;
-      const results: Record<string, string> = {};
-      await Promise.all(
-        msgs.map(async (msg) => {
-          if (msg.ciphertext && !msg.plaintext) {
-            try {
-              results[msg.id] = await decrypt(msg.ciphertext, key);
-            } catch {
-              results[msg.id] = "[Unable to decrypt]";
-            }
-          }
-        }),
-      );
-      setDecryptedTexts(results);
-    },
-    [],
-  );
-
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -139,21 +111,11 @@ export default function ConversationPage() {
         }
       }
 
-      const { data: convo } = await supabase.from("conversations").select("name, type, is_encrypted, description").eq("id", conversationId).single();
+      const { data: convo } = await supabase.from("conversations").select("name, type, description").eq("id", conversationId).single();
       if (convo) {
         setConvoName(convo.name || convo.type.replace(/_/g, " "));
         setConvoType(convo.type);
         setConvoDescription(convo.description || "");
-        setIsEncrypted(!!convo.is_encrypted);
-
-        if (convo.is_encrypted) {
-          try {
-            const key = await getOrCreateConversationKey(conversationId);
-            setCryptoKey(key);
-          } catch {
-            console.error("Failed to initialize encryption key");
-          }
-        }
       }
 
       // Load members with last_read_at for read receipts
@@ -228,13 +190,6 @@ export default function ConversationPage() {
     }
   }
 
-  // Decrypt whenever messages or cryptoKey change
-  useEffect(() => {
-    if (isEncrypted && cryptoKey && messages.length > 0) {
-      decryptMessages(messages, cryptoKey);
-    }
-  }, [messages, cryptoKey, isEncrypted, decryptMessages]);
-
   // Realtime subscription for messages
   useEffect(() => {
     const channel = supabase
@@ -279,6 +234,41 @@ export default function ConversationPage() {
       typingChannelRef.current = null;
       supabase.removeChannel(channel);
     };
+  }, [conversationId, profileId]);
+
+  // Offline draft resend: when connectivity is restored, retry any saved drafts
+  useEffect(() => {
+    function handleOnline() {
+      if (!profileId) return;
+      const storageKey = `drafts_${conversationId}`;
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const drafts: Array<{ text: string; timestamp: number }> = JSON.parse(raw);
+      if (drafts.length === 0) return;
+      localStorage.removeItem(storageKey);
+      (async () => {
+        for (const draft of drafts) {
+          const { error } = await supabase.from("messages").insert({
+            conversation_id: conversationId,
+            sender_id: profileId,
+            message_type: "text" as const,
+            plaintext: draft.text,
+          });
+          if (error) {
+            const remaining: Array<{ text: string; timestamp: number }> = JSON.parse(
+              localStorage.getItem(storageKey) || "[]",
+            );
+            remaining.push(draft);
+            localStorage.setItem(storageKey, JSON.stringify(remaining));
+          }
+        }
+        showToast("Offline messages sent.", "success");
+        loadMessages();
+      })();
+    }
+    window.addEventListener("online", handleOnline);
+    if (navigator.onLine && profileId) handleOnline();
+    return () => window.removeEventListener("online", handleOnline);
   }, [conversationId, profileId]);
 
   function handleTyping() {
@@ -354,19 +344,7 @@ export default function ConversationPage() {
     }
 
     let insertError: { message: string } | null = null;
-
-    if (isEncrypted && cryptoKey) {
-      const ciphertext = await encrypt(newMsg.trim(), cryptoKey);
-      const { error } = await supabase.from("messages").insert({
-        conversation_id: conversationId,
-        sender_id: profileId,
-        message_type: "text" as const,
-        reply_to_id: replyTo?.id || null,
-        ciphertext,
-        plaintext: null,
-      });
-      insertError = error;
-    } else {
+    try {
       const { error } = await supabase.from("messages").insert({
         conversation_id: conversationId,
         sender_id: profileId,
@@ -375,6 +353,31 @@ export default function ConversationPage() {
         plaintext: newMsg.trim(),
       });
       insertError = error;
+    } catch (networkErr: unknown) {
+      // Network error (offline) -- save draft for retry when back online
+      if (networkErr instanceof TypeError || !navigator.onLine) {
+        const storageKey = `drafts_${conversationId}`;
+        const drafts: Array<{ text: string; timestamp: number }> = JSON.parse(
+          localStorage.getItem(storageKey) || "[]",
+        );
+        drafts.push({ text: newMsg.trim(), timestamp: Date.now() });
+        localStorage.setItem(storageKey, JSON.stringify(drafts));
+        showToast("Saved offline. Will retry when connected.", "success");
+        setNewMsg("");
+        setReplyTo(null);
+        setSending(false);
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.ready
+            .then((reg) => {
+              // Background Sync API for message retry
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              return (reg as any).sync?.register("send-messages");
+            })
+            .catch(() => { /* sync not supported */ });
+        }
+        return;
+      }
+      throw networkErr;
     }
 
     if (insertError) {
@@ -387,10 +390,28 @@ export default function ConversationPage() {
     }
 
     await supabase.from("conversations").update({
-      last_message_preview: isEncrypted ? "[Encrypted]" : newMsg.trim().substring(0, 100),
+      last_message_preview: newMsg.trim().substring(0, 100),
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq("id", conversationId);
+
+    // Fire push notifications for other conversation members (background, non-blocking)
+    const otherMembers = members.filter(m => m.profile_id !== profileId);
+    const preview = newMsg.trim().substring(0, 100);
+    for (const member of otherMembers) {
+      fetch("/api/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profileId: member.profile_id,
+          title: profileName || "New message",
+          body: preview,
+          url: `/messages/${conversationId}`,
+        }),
+      }).catch(() => {
+        // Best-effort — don't block on push failures
+      });
+    }
 
     setNewMsg("");
     setReplyTo(null);
@@ -424,6 +445,9 @@ export default function ConversationPage() {
     if (!confirmed) return;
     if (adminOverride && isAdmin) {
       await supabase.from("messages").delete().eq("id", msgId);
+      await logAdminAction(profileId, "delete_message", "message", msgId, {
+        conversation_id: conversationId,
+      });
     } else {
       await supabase.from("messages").delete().eq("id", msgId).eq("sender_id", profileId);
     }
@@ -493,7 +517,7 @@ export default function ConversationPage() {
       .upload(filePath, file);
 
     if (uploadErr) {
-      console.error("Upload failed:", uploadErr);
+      void uploadErr; // TODO: surface upload error to user
       setUploading(false);
       return;
     }
@@ -555,11 +579,7 @@ export default function ConversationPage() {
 
   /** Get display text for a message */
   function displayText(msg: Message): string {
-    if (msg.plaintext) return msg.plaintext;
-    if (msg.ciphertext) {
-      return decryptedTexts[msg.id] ?? "Decrypting...";
-    }
-    return "";
+    return msg.plaintext || "";
   }
 
   /** Wrap URLs in clickable links */
@@ -613,19 +633,11 @@ export default function ConversationPage() {
         name={convoName}
         type={convoType}
         description={convoDescription}
-        isEncrypted={isEncrypted}
         members={members}
         profileId={profileId}
         onLeave={leaveConversation}
         onToggleSearch={() => setSearchOpen(!searchOpen)}
       />
-
-      {/* E2E encryption notice */}
-      {isEncrypted && (
-        <p className="text-[11px] text-amber-400/70 px-3 py-1">
-          &#x26A0;&#xFE0F; E2E keys are stored locally in your browser. Messages cannot be read on other devices.
-        </p>
-      )}
 
       {/* Search panel */}
       <MessageSearch
@@ -732,7 +744,6 @@ export default function ConversationPage() {
         onCancelEdit={cancelEdit}
         sending={sending}
         uploading={uploading}
-        isEncrypted={isEncrypted}
         onTyping={handleTyping}
         uploadError={uploadError}
         onDismissUploadError={() => setUploadError(null)}

@@ -28,7 +28,7 @@ export function trackSearch(
       result_count: resultCount,
     })
     .then(({ error }) => {
-      if (error) {
+      if (error && process.env.NODE_ENV !== "production") {
         console.error("[analytics] trackSearch failed:", error.message);
       }
     });

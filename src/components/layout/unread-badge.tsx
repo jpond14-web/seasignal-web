@@ -8,8 +8,6 @@ export function UnreadBadge() {
 
   useEffect(() => {
     const supabase = createClient();
-    let interval: NodeJS.Timeout;
-
     async function fetchUnread() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -48,7 +46,7 @@ export function UnreadBadge() {
     }
 
     fetchUnread();
-    interval = setInterval(fetchUnread, 30000); // poll every 30s
+    const interval = setInterval(fetchUnread, 30000); // poll every 30s
 
     return () => clearInterval(interval);
   }, []);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { logAdminAction } from "@/lib/auditLog";
 
 type Channel = {
   id: string;
@@ -41,6 +42,23 @@ export default function AdminChannelsPage() {
   const [viewingMembers, setViewingMembers] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [adminProfileId, setAdminProfileId] = useState<string | null>(null);
+
+  // Fetch admin profile ID
+  useEffect(() => {
+    async function fetchAdminId() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("auth_user_id", user.id)
+          .single();
+        if (profile) setAdminProfileId(profile.id);
+      }
+    }
+    fetchAdminId();
+  }, [supabase]);
 
   const loadChannels = useCallback(async () => {
     setLoading(true);
@@ -91,7 +109,7 @@ export default function AdminChannelsPage() {
   }, [supabase]);
 
   useEffect(() => {
-    loadChannels();
+    loadChannels(); // eslint-disable-line react-hooks/set-state-in-effect -- async fetch on mount
   }, [loadChannels]);
 
   const filteredChannels = channels.filter((c) => {
@@ -122,6 +140,10 @@ export default function AdminChannelsPage() {
       .eq("conversation_id", channelId);
     await supabase.from("conversations").delete().eq("id", channelId);
 
+    if (adminProfileId) {
+      await logAdminAction(adminProfileId, "delete_channel", "channel", channelId);
+    }
+
     await loadChannels();
     setActing(null);
   }
@@ -148,6 +170,14 @@ export default function AdminChannelsPage() {
         updated_at: new Date().toISOString(),
       })
       .eq("id", editingChannel.id);
+
+    if (adminProfileId) {
+      await logAdminAction(adminProfileId, "edit_channel", "channel", editingChannel.id, {
+        name: editName || null,
+        description: editDescription || null,
+        access_mode: editAccessMode || null,
+      });
+    }
 
     setEditingChannel(null);
     await loadChannels();
@@ -193,6 +223,11 @@ export default function AdminChannelsPage() {
     if (!confirmed) return;
 
     await supabase.from("conversation_members").delete().eq("id", membershipId);
+    if (adminProfileId) {
+      await logAdminAction(adminProfileId, "kick_member", "channel", channelId, {
+        membership_id: membershipId,
+      });
+    }
     await loadMembers(channelId);
     await loadChannels();
   }

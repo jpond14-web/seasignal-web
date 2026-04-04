@@ -1,48 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
-
-type ConversationType = Database["public"]["Enums"]["conversation_type"];
-type DepartmentType = Database["public"]["Enums"]["department_type"];
-type RankCategory = Database["public"]["Enums"]["rank_category"];
-type VesselType = Database["public"]["Enums"]["vessel_type"];
-
-type ConversationWithMeta = {
-  id: string;
-  type: ConversationType;
-  name: string | null;
-  description: string | null;
-  context_port: string | null;
-  updated_at: string;
-  is_encrypted: boolean | null;
-  last_message_preview: string | null;
-  last_message_at: string | null;
-  created_by: string | null;
-  max_members: number | null;
-  // joined from conversation_members
-  is_pinned?: boolean;
-  is_archived?: boolean;
-  is_muted?: boolean;
-  last_read_at?: string | null;
-  unread_count?: number;
-  // for DM partner display
-  dm_partner_name?: string;
-  dm_partner_online?: boolean;
-  member_count?: number;
-};
-
-type FoundUser = {
-  id: string;
-  display_name: string;
-  department_tag: DepartmentType | null;
-  rank_range: RankCategory | null;
-  vessel_type_tags: VesselType[] | null;
-  last_seen_at: string | null;
-};
+import type { ConversationWithMeta, ConversationType, FoundUser, DepartmentType, RankCategory, VesselType } from "@/components/messages/types";
+import ConversationItem from "@/components/messages/ConversationItem";
+import NewConversationPanel from "@/components/messages/NewConversationPanel";
+import ChannelBrowserPanel from "@/components/messages/ChannelBrowserPanel";
 
 type Tab = "direct" | "channels";
 
@@ -50,7 +14,7 @@ const CHANNEL_TYPES: ConversationType[] = ["channel", "vessel_channel", "company
 
 function isOnline(lastSeen: string | null): boolean {
   if (!lastSeen) return false;
-  return Date.now() - new Date(lastSeen).getTime() < 5 * 60 * 1000; // 5 min
+  return Date.now() - new Date(lastSeen).getTime() < 5 * 60 * 1000;
 }
 
 function isChannel(type: ConversationType): boolean {
@@ -75,7 +39,6 @@ export default function MessagesPage() {
   const [foundUsers, setFoundUsers] = useState<FoundUser[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<FoundUser[]>([]);
   const [creating, setCreating] = useState(false);
-  const [newEncrypted, setNewEncrypted] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [openActionsId, setOpenActionsId] = useState<string | null>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -96,7 +59,6 @@ export default function MessagesPage() {
   // Heartbeat: update last_seen_at
   useEffect(() => {
     const sb = supabaseRef.current;
-    let interval: NodeJS.Timeout;
     async function heartbeat() {
       const { data: { user } } = await sb.auth.getUser();
       if (user) {
@@ -107,7 +69,7 @@ export default function MessagesPage() {
       }
     }
     heartbeat();
-    interval = setInterval(heartbeat, 60000);
+    const interval = setInterval(heartbeat, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -172,14 +134,12 @@ export default function MessagesPage() {
     if (!convos) { setLoading(false); return; }
 
     // --- Batch query: unread counts ---
-    // Find the earliest last_read_at to use as a floor for the messages query
     const earliestLastRead = memberships.reduce<string | null>((earliest, m) => {
-      if (!m.last_read_at) return null; // null means "never read" -> need all
+      if (!m.last_read_at) return null;
       if (earliest === null) return null;
       return m.last_read_at < earliest ? m.last_read_at : earliest;
     }, memberships[0]?.last_read_at ?? null);
 
-    // Fetch all unread messages across all conversations in ONE query
     let unreadQuery = supabase
       .from("messages")
       .select("conversation_id, created_at")
@@ -192,13 +152,11 @@ export default function MessagesPage() {
 
     const { data: unreadMessages } = await unreadQuery;
 
-    // Count per conversation, respecting each conversation's own last_read_at
     const unreadCountMap = new Map<string, number>();
     if (unreadMessages) {
       for (const msg of unreadMessages) {
         const membership = membershipMap.get(msg.conversation_id);
         const lastRead = membership?.last_read_at;
-        // If no lastRead, all messages are unread; otherwise only those after lastRead
         if (!lastRead || msg.created_at > lastRead) {
           unreadCountMap.set(msg.conversation_id, (unreadCountMap.get(msg.conversation_id) || 0) + 1);
         }
@@ -211,7 +169,6 @@ export default function MessagesPage() {
       .select("conversation_id, profile_id")
       .in("conversation_id", ids);
 
-    // Build member count map and DM partner ID map
     const memberCountMap = new Map<string, number>();
     const dmPartnerIdMap = new Map<string, string>();
     const dmConvoIds = new Set(convos.filter(c => c.type === "dm").map(c => c.id));
@@ -219,11 +176,9 @@ export default function MessagesPage() {
 
     if (allMembers) {
       for (const m of allMembers) {
-        // Count members for non-DM conversations
         if (nonDmConvoIds.has(m.conversation_id)) {
           memberCountMap.set(m.conversation_id, (memberCountMap.get(m.conversation_id) || 0) + 1);
         }
-        // Find DM partner (the member that isn't us)
         if (dmConvoIds.has(m.conversation_id) && m.profile_id !== profile.id) {
           dmPartnerIdMap.set(m.conversation_id, m.profile_id);
         }
@@ -284,7 +239,6 @@ export default function MessagesPage() {
 
     if (!data) { setAllChannels([]); return; }
 
-    // Fetch member counts for all browseable channels
     const channelIds = data.map(c => c.id);
     const { data: memberRows } = await supabase
       .from("conversation_members")
@@ -350,7 +304,6 @@ export default function MessagesPage() {
     // For DMs, check if a conversation already exists with this user
     if (newType === "dm" && selectedUsers.length === 1) {
       const targetId = selectedUsers[0].id;
-      // Find DM conversations where both users are members
       const { data: myDmMemberships } = await supabase
         .from("conversation_members")
         .select("conversation_id")
@@ -364,7 +317,6 @@ export default function MessagesPage() {
           .eq("profile_id", targetId)
           .in("conversation_id", myConvoIds);
 
-        // Find one that's a DM type
         const dmMatch = existingDm?.find(
           (m) => (m.conversations as unknown as { type: string })?.type === "dm"
         );
@@ -382,7 +334,7 @@ export default function MessagesPage() {
       type: newType,
       name: newType === "group" ? newName || null : null,
       description: newType === "group" ? newDescription || null : null,
-      is_encrypted: newEncrypted,
+      is_encrypted: false,
       created_by: profileId,
     }).select("id").single();
 
@@ -399,7 +351,6 @@ export default function MessagesPage() {
     setSelectedUsers([]);
     setNewName("");
     setNewDescription("");
-    setNewEncrypted(false);
     setFilterDepartment("");
     setFilterRank("");
     setFilterVesselType("");
@@ -481,22 +432,14 @@ export default function MessagesPage() {
     load();
   }
 
-  function formatType(t: string) {
-    return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  function handleSelectUser(user: FoundUser) {
+    setSelectedUsers((prev) => prev.find((p) => p.id === user.id) ? prev : [...prev, user]);
+    setSearchUser("");
+    setFoundUsers([]);
   }
 
-  function formatTime(dateStr: string) {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return "Now";
-    if (diffMins < 60) return `${diffMins}m`;
-    const diffHrs = Math.floor(diffMins / 60);
-    if (diffHrs < 24) return `${diffHrs}h`;
-    const diffDays = Math.floor(diffHrs / 24);
-    if (diffDays < 7) return `${diffDays}d`;
-    return d.toLocaleDateString();
+  function handleRemoveUser(userId: string) {
+    setSelectedUsers((p) => p.filter((x) => x.id !== userId));
   }
 
   // Sort and section conversations
@@ -516,159 +459,23 @@ export default function MessagesPage() {
   const joinedChannelIds = new Set(conversations.filter(c => isChannel(c.type)).map(c => c.id));
   const unjoinedChannels = allChannels.filter(c => !joinedChannelIds.has(c.id));
 
-  function renderConversationItem(c: ConversationWithMeta) {
-    const displayName = c.type === "dm" ? (c.dm_partner_name || "Direct Message") : (c.name || formatType(c.type));
-    const hasUnread = (c.unread_count || 0) > 0;
-    const isActionsOpen = openActionsId === c.id;
-
-    return (
-      <div key={c.id} className="group relative">
-        <Link href={`/messages/${c.id}`}
-          className={`block bg-navy-900 border rounded-lg p-4 pr-10 transition-colors ${
-            hasUnread ? "border-teal-500/30 bg-navy-900/80" : "border-navy-700 hover:border-navy-600"
-          }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              {/* Online indicator for DM */}
-              {c.type === "dm" && (
-                <div className="relative shrink-0">
-                  <div className="w-9 h-9 rounded-full bg-navy-800 flex items-center justify-center text-sm font-medium text-slate-300">
-                    {(c.dm_partner_name || "?").charAt(0).toUpperCase()}
-                  </div>
-                  <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-navy-900 ${
-                    c.dm_partner_online ? "bg-green-400" : "bg-slate-600"
-                  }`} />
-                </div>
-              )}
-              {/* Channel icon */}
-              {isChannel(c.type) && (
-                <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400 shrink-0">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M4 9h16M4 15h16M10 3l-2 18M16 3l-2 18" />
-                  </svg>
-                </div>
-              )}
-              {/* Group icon */}
-              {c.type === "group" && (
-                <div className="w-9 h-9 rounded-full bg-navy-800 flex items-center justify-center text-slate-400 shrink-0">
-                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                  </svg>
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className={`font-medium truncate ${hasUnread ? "text-slate-100" : "text-slate-300"}`}>
-                    {displayName}
-                  </p>
-                  {c.is_pinned && (
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="text-teal-400 shrink-0">
-                      <path d="M4.146.146A.5.5 0 014.5 0h7a.5.5 0 01.5.5c0 .68-.342 1.174-.646 1.479-.126.125-.25.224-.354.298v4.431l.078.048c.203.127.476.314.751.555C12.36 7.775 13 8.527 13 9.5a.5.5 0 01-.5.5H8.5v5.5a.5.5 0 01-1 0V10H3.5a.5.5 0 01-.5-.5c0-.973.64-1.725 1.17-2.189A5.921 5.921 0 015 6.708V2.277a2.77 2.77 0 01-.354-.298C4.342 1.674 4 1.18 4 .5a.5.5 0 01.146-.354z" />
-                    </svg>
-                  )}
-                  {/* Muted indicator */}
-                  {c.is_muted && (
-                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" className="text-slate-500 shrink-0" aria-label="Muted">
-                      <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clipRule="evenodd" />
-                      <path d="M12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" />
-                    </svg>
-                  )}
-                  {c.is_encrypted && (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-teal-400 shrink-0">
-                      <path fillRule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </div>
-                {c.last_message_preview && (
-                  <p className={`text-xs truncate mt-0.5 ${hasUnread ? "text-slate-300" : "text-slate-500"}`}>
-                    {c.last_message_preview}
-                  </p>
-                )}
-                {!c.last_message_preview && c.context_port && (
-                  <p className="text-xs text-slate-500 mt-0.5">{c.context_port}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 ml-3">
-              {c.member_count && c.type !== "dm" ? (
-                <span className="text-[10px] text-slate-500">{c.member_count} members</span>
-              ) : null}
-              {hasUnread && (
-                <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-teal-500 text-navy-950 text-[10px] font-bold rounded-full">
-                  {c.unread_count! > 99 ? "99+" : c.unread_count}
-                </span>
-              )}
-              <span className="text-[10px] text-slate-500">
-                {formatTime(c.last_message_at || c.updated_at)}
-              </span>
-            </div>
-          </div>
-        </Link>
-        {/* More actions button — always visible for mobile, also shown on hover for desktop */}
-        <div className="absolute top-2 right-2" ref={isActionsOpen ? actionsRef : undefined}>
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenActionsId(isActionsOpen ? null : c.id); }}
-            className={`p-1.5 rounded bg-navy-800/90 border border-navy-600 text-slate-400 hover:text-slate-200 transition-colors ${
-              isActionsOpen ? "text-slate-200" : "md:opacity-0 md:group-hover:opacity-100"
-            }`}
-            aria-label="More actions"
-          >
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-            </svg>
-          </button>
-          {/* Actions dropdown */}
-          {isActionsOpen && (
-            <div className="absolute top-full right-0 mt-1 w-40 bg-navy-800 border border-navy-600 rounded-lg shadow-lg z-20 py-1 text-sm">
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(c.id, !!c.is_pinned); setOpenActionsId(null); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-left text-slate-300 hover:bg-navy-700 hover:text-teal-400 transition-colors"
-              >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M4.146.146A.5.5 0 014.5 0h7a.5.5 0 01.5.5c0 .68-.342 1.174-.646 1.479-.126.125-.25.224-.354.298v4.431l.078.048c.203.127.476.314.751.555C12.36 7.775 13 8.527 13 9.5a.5.5 0 01-.5.5H8.5v5.5a.5.5 0 01-1 0V10H3.5a.5.5 0 01-.5-.5c0-.973.64-1.725 1.17-2.189A5.921 5.921 0 015 6.708V2.277a2.77 2.77 0 01-.354-.298C4.342 1.674 4 1.18 4 .5a.5.5 0 01.146-.354z" />
-                </svg>
-                {c.is_pinned ? "Unpin" : "Pin"}
-              </button>
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleMute(c.id, !!c.is_muted); setOpenActionsId(null); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-left text-slate-300 hover:bg-navy-700 hover:text-teal-400 transition-colors"
-              >
-                {c.is_muted ? (
-                  <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clipRule="evenodd" />
-                    <path d="M12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" />
-                  </svg>
-                )}
-                {c.is_muted ? "Unmute" : "Mute"}
-              </button>
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleArchive(c.id, !!c.is_archived); setOpenActionsId(null); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-left text-slate-300 hover:bg-navy-700 hover:text-amber-400 transition-colors"
-              >
-                <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
-                  <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
-                </svg>
-                {c.is_archived ? "Unarchive" : "Archive"}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   function renderSection(title: string, items: ConversationWithMeta[]) {
     if (items.length === 0) return null;
     return (
       <div className="mb-4">
         <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-2 px-1">{title}</p>
         <div className="space-y-1.5">
-          {items.map(renderConversationItem)}
+          {items.map(c => (
+            <ConversationItem
+              key={c.id}
+              conversation={c}
+              isActionsOpen={openActionsId === c.id}
+              onToggleActions={setOpenActionsId}
+              onTogglePin={togglePin}
+              onToggleMute={toggleMute}
+              onToggleArchive={toggleArchive}
+            />
+          ))}
         </div>
       </div>
     );
@@ -716,215 +523,48 @@ export default function MessagesPage() {
 
       {/* New DM/Group panel */}
       {showNew && tab === "direct" && (
-        <div className="bg-navy-900 border border-navy-700 rounded-lg p-5 mb-6">
-          <div className="flex gap-2 mb-4">
-            <button onClick={() => setNewType("dm")}
-              className={`flex-1 py-2 text-sm rounded border ${newType === "dm" ? "bg-teal-500/20 text-teal-400 border-teal-500/30" : "bg-navy-800 text-slate-400 border-navy-600"}`}>
-              Direct Message
-            </button>
-            <button onClick={() => setNewType("group")}
-              className={`flex-1 py-2 text-sm rounded border ${newType === "group" ? "bg-teal-500/20 text-teal-400 border-teal-500/30" : "bg-navy-800 text-slate-400 border-navy-600"}`}>
-              Group Chat
-            </button>
-          </div>
-          {newType === "group" && (
-            <>
-              <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Group name"
-                className="w-full px-3 py-2 mb-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
-              <input type="text" value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description (optional)"
-                className="w-full px-3 py-2 mb-3 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
-            </>
-          )}
-
-          {/* Discovery filters */}
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <select value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value as DepartmentType | "")}
-              className="px-2 py-1.5 bg-navy-800 border border-navy-600 rounded text-slate-300 text-xs focus:border-teal-500 focus:outline-none">
-              <option value="">All Departments</option>
-              <option value="deck">Deck</option>
-              <option value="engine">Engine</option>
-              <option value="electro">Electro</option>
-              <option value="catering">Catering</option>
-            </select>
-            <select value={filterRank} onChange={(e) => setFilterRank(e.target.value as RankCategory | "")}
-              className="px-2 py-1.5 bg-navy-800 border border-navy-600 rounded text-slate-300 text-xs focus:border-teal-500 focus:outline-none">
-              <option value="">All Ranks</option>
-              <option value="officer">Officer</option>
-              <option value="rating">Rating</option>
-              <option value="cadet">Cadet</option>
-            </select>
-            <select value={filterVesselType} onChange={(e) => setFilterVesselType(e.target.value as VesselType | "")}
-              className="px-2 py-1.5 bg-navy-800 border border-navy-600 rounded text-slate-300 text-xs focus:border-teal-500 focus:outline-none">
-              <option value="">All Vessel Types</option>
-              <option value="tanker">Tanker</option>
-              <option value="bulk_carrier">Bulk Carrier</option>
-              <option value="container">Container</option>
-              <option value="general_cargo">General Cargo</option>
-              <option value="offshore">Offshore</option>
-              <option value="passenger">Passenger</option>
-              <option value="roro">RoRo</option>
-              <option value="lng">LNG</option>
-              <option value="lpg">LPG</option>
-              <option value="chemical">Chemical</option>
-              <option value="tug">Tug</option>
-              <option value="fishing">Fishing</option>
-            </select>
-          </div>
-
-          <input type="text" value={searchUser} onChange={(e) => handleSearchUsers(e.target.value)} placeholder="Search seafarers by name..."
-            className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
-
-          {foundUsers.length > 0 && (
-            <div className="mt-2 max-h-48 overflow-y-auto space-y-1 border border-navy-700 rounded-lg p-1">
-              {foundUsers.map((u) => (
-                <button key={u.id}
-                  onClick={() => { setSelectedUsers((prev) => prev.find((p) => p.id === u.id) ? prev : [...prev, u]); setSearchUser(""); setFoundUsers([]); }}
-                  className="flex items-center gap-3 w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-navy-800 rounded">
-                  <div className="relative">
-                    <div className="w-7 h-7 rounded-full bg-navy-700 flex items-center justify-center text-xs font-medium text-slate-300">
-                      {u.display_name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-navy-900 ${
-                      isOnline(u.last_seen_at) ? "bg-green-400" : "bg-slate-600"
-                    }`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{u.display_name}</p>
-                    <p className="text-[10px] text-slate-500">
-                      {[u.department_tag, u.rank_range].filter(Boolean).map(v => formatType(v!)).join(" / ") || "No details"}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {selectedUsers.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {selectedUsers.map((u) => (
-                <span key={u.id} className="flex items-center gap-1 px-2 py-1 text-xs bg-navy-800 border border-navy-600 rounded text-slate-300">
-                  {u.display_name}
-                  <button onClick={() => setSelectedUsers((p) => p.filter((x) => x.id !== u.id))} className="text-slate-500 hover:text-red-400" aria-label={`Remove ${u.display_name}`}>&times;</button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* E2E encryption toggle removed — key exchange not yet implemented */}
-
-          <button onClick={createConversation} disabled={creating || selectedUsers.length === 0}
-            className="mt-3 px-4 py-2 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors">
-            {creating ? "Creating..." : "Start Conversation"}
-          </button>
-        </div>
+        <NewConversationPanel
+          newType={newType}
+          onNewTypeChange={setNewType}
+          newName={newName}
+          onNewNameChange={setNewName}
+          newDescription={newDescription}
+          onNewDescriptionChange={setNewDescription}
+          searchUser={searchUser}
+          onSearchUsers={handleSearchUsers}
+          foundUsers={foundUsers}
+          selectedUsers={selectedUsers}
+          onSelectUser={handleSelectUser}
+          onRemoveUser={handleRemoveUser}
+          creating={creating}
+          onCreateConversation={createConversation}
+          filterDepartment={filterDepartment}
+          onFilterDepartmentChange={setFilterDepartment}
+          filterRank={filterRank}
+          onFilterRankChange={setFilterRank}
+          filterVesselType={filterVesselType}
+          onFilterVesselTypeChange={setFilterVesselType}
+        />
       )}
 
       {/* Channel browser/create panel */}
       {showChannelBrowser && tab === "channels" && (
-        <div className="bg-navy-900 border border-navy-700 rounded-lg p-5 mb-6">
-          <h3 className="text-sm font-semibold text-slate-200 mb-3">Create a Channel</h3>
-          <div className="flex gap-2 mb-3">
-            {(["channel", "vessel_channel", "port_channel"] as ConversationType[]).map(ct => (
-              <button key={ct} onClick={() => setNewChannelType(ct)}
-                className={`px-3 py-1.5 text-xs rounded border ${newChannelType === ct ? "bg-teal-500/20 text-teal-400 border-teal-500/30" : "bg-navy-800 text-slate-400 border-navy-600"}`}>
-                {formatType(ct)}
-              </button>
-            ))}
-          </div>
-          <input type="text" value={newChannelName} onChange={(e) => setNewChannelName(e.target.value)} placeholder="Channel name"
-            className="w-full px-3 py-2 mb-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
-          <input type="text" value={newChannelDesc} onChange={(e) => setNewChannelDesc(e.target.value)} placeholder="Description (optional)"
-            className="w-full px-3 py-2 mb-3 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
-          <button onClick={createChannel} disabled={creatingChannel || !newChannelName.trim()}
-            className="px-4 py-2 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors">
-            {creatingChannel ? "Creating..." : "Create Channel"}
-          </button>
-
-          {/* Join error message */}
-          {joinError && (
-            <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-300 flex items-start gap-2">
-              <svg className="w-4 h-4 text-red-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <span>{joinError}</span>
-              <button onClick={() => setJoinError(null)} className="ml-auto text-red-400 hover:text-red-300">✕</button>
-            </div>
-          )}
-
-          {/* Discoverable channels */}
-          {unjoinedChannels.length > 0 && (
-            <>
-              <h3 className="text-sm font-semibold text-slate-200 mt-5 mb-3">Browse Channels</h3>
-              <input
-                type="text"
-                placeholder="Search channels..."
-                value={channelSearch}
-                onChange={e => setChannelSearch(e.target.value)}
-                className="w-full mb-2 px-3 py-2 bg-navy-800 border border-navy-700 rounded-lg text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-teal-500/50"
-              />
-              <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                {unjoinedChannels.filter(ch => {
-                  if (!channelSearch.trim()) return true;
-                  const name = ch.name || "";
-                  return name.toLowerCase().includes(channelSearch.toLowerCase());
-                }).map(ch => {
-                  const isFull = !!(ch.max_members && ch.max_members > 0 && (ch.member_count || 0) >= ch.max_members);
-                  return (
-                  <div key={ch.id} className="flex items-center justify-between px-3 py-2.5 bg-navy-800 border border-navy-700 rounded-lg">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-slate-200 truncate">{ch.name || formatType(ch.type)}</p>
-                        {ch.type === "vessel_channel" && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
-                            <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                            Crew Only
-                          </span>
-                        )}
-                        {ch.type === "company_channel" && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
-                            <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2H4a1 1 0 110-2V4z" clipRule="evenodd" /></svg>
-                            Company
-                          </span>
-                        )}
-                        {ch.type === "port_channel" && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20 rounded">
-                            Open
-                          </span>
-                        )}
-                        {Boolean((ch as Record<string, unknown>).is_system) && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded">
-                            Official
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {ch.description && <p className="text-xs text-slate-500 truncate">{ch.description}</p>}
-                        {(ch.member_count !== undefined && ch.member_count > 0) && (
-                          <span className="text-[10px] text-slate-500 shrink-0">
-                            {ch.max_members && ch.max_members > 0
-                              ? `${ch.member_count}/${ch.max_members} members`
-                              : `${ch.member_count} members`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {isFull ? (
-                      <span className="ml-3 px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium rounded shrink-0">
-                        Full
-                      </span>
-                    ) : (
-                      <button onClick={() => joinChannel(ch.id)}
-                        className="ml-3 px-3 py-1 bg-teal-500/15 text-teal-400 hover:bg-teal-500/25 text-xs font-medium rounded transition-colors shrink-0">
-                        Join
-                      </button>
-                    )}
-                  </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
+        <ChannelBrowserPanel
+          newChannelName={newChannelName}
+          onNewChannelNameChange={setNewChannelName}
+          newChannelDesc={newChannelDesc}
+          onNewChannelDescChange={setNewChannelDesc}
+          newChannelType={newChannelType}
+          onNewChannelTypeChange={setNewChannelType}
+          creatingChannel={creatingChannel}
+          onCreateChannel={createChannel}
+          joinError={joinError}
+          onDismissJoinError={() => setJoinError(null)}
+          unjoinedChannels={unjoinedChannels}
+          channelSearch={channelSearch}
+          onChannelSearchChange={setChannelSearch}
+          onJoinChannel={joinChannel}
+        />
       )}
 
       {/* Conversation list */}
@@ -993,7 +633,17 @@ export default function MessagesPage() {
               </button>
               {showArchived && (
                 <div className="space-y-1.5 opacity-60">
-                  {archivedConvos.map(renderConversationItem)}
+                  {archivedConvos.map(c => (
+                    <ConversationItem
+                      key={c.id}
+                      conversation={c}
+                      isActionsOpen={openActionsId === c.id}
+                      onToggleActions={setOpenActionsId}
+                      onTogglePin={togglePin}
+                      onToggleMute={toggleMute}
+                      onToggleArchive={toggleArchive}
+                    />
+                  ))}
                 </div>
               )}
             </div>

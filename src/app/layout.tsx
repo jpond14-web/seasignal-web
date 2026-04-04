@@ -31,10 +31,9 @@ export const metadata: Metadata = {
     siteName: "SeaSignal",
     locale: "en_US",
     url: "https://seasignal.app",
-    // TODO: Replace SVG with PNG for broader social platform support
     images: [
       {
-        url: "https://seasignal.app/og-image.svg",
+        url: "https://seasignal.app/og-image.png",
         width: 1200,
         height: 630,
         alt: "SeaSignal — Professional Network for Seafarers",
@@ -46,8 +45,7 @@ export const metadata: Metadata = {
     title: "SeaSignal — Professional Network for Seafarers",
     description:
       "Privacy-first platform connecting maritime professionals worldwide. Track certificates, share pay data, and verify contracts.",
-    // TODO: Replace SVG with PNG for broader social platform support
-    images: ["https://seasignal.app/og-image.svg"],
+    images: ["https://seasignal.app/og-image.png"],
   },
   alternates: {
     canonical: "https://seasignal.app",

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { logAdminAction } from "@/lib/auditLog";
 
 type Report = {
   id: string;
@@ -115,6 +116,9 @@ export default function AdminReportsPage() {
       .from("reported_content")
       .update({ status: "dismissed", reviewed_by: adminProfileId, updated_at: new Date().toISOString() })
       .eq("id", reportId);
+    if (adminProfileId) {
+      await logAdminAction(adminProfileId, "dismiss_report", "report", reportId);
+    }
     await loadReports();
     setActing(null);
   }
@@ -137,6 +141,13 @@ export default function AdminReportsPage() {
       .from("reported_content")
       .update({ status: "resolved", reviewed_by: adminProfileId, updated_at: new Date().toISOString() })
       .eq("id", report.id);
+
+    if (adminProfileId) {
+      await logAdminAction(adminProfileId, "delete_content", "report", report.id, {
+        content_type: report.content_type,
+        content_id: report.content_id,
+      });
+    }
 
     await loadReports();
     setActing(null);
@@ -162,6 +173,12 @@ export default function AdminReportsPage() {
       .from("reported_content")
       .update({ status: "resolved", reviewed_by: adminProfileId, updated_at: new Date().toISOString() })
       .eq("id", report.id);
+
+    if (adminProfileId) {
+      await logAdminAction(adminProfileId, "ban_user", "user", report.message_sender_id!, {
+        report_id: report.id,
+      });
+    }
 
     await loadReports();
     setActing(null);

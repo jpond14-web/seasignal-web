@@ -24,7 +24,6 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
  */
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (!("Notification" in window)) {
-    console.warn("Push notifications are not supported in this browser.");
     return "denied";
   }
   return Notification.requestPermission();
@@ -50,7 +49,6 @@ export async function subscribeToPush(profileId: string): Promise<boolean> {
 
     const registration = await getServiceWorkerRegistration();
     if (!registration) {
-      console.warn("No service worker registration available.");
       return false;
     }
 
@@ -79,13 +77,13 @@ export async function subscribeToPush(profileId: string): Promise<boolean> {
     );
 
     if (error) {
-      console.error("Failed to save push subscription:", error);
+      // TODO: send to error reporting service
       return false;
     }
 
     return true;
-  } catch (error) {
-    console.error("Failed to subscribe to push notifications:", error);
+  } catch {
+    // TODO: send to error reporting service
     return false;
   }
 }
@@ -111,12 +109,12 @@ export async function unsubscribeFromPush(profileId: string): Promise<boolean> {
       .eq("profile_id", profileId);
 
     if (error) {
-      console.error("Failed to remove push subscription:", error);
+      // TODO: send to error reporting service
     }
 
     return true;
-  } catch (error) {
-    console.error("Failed to unsubscribe from push notifications:", error);
+  } catch {
+    // TODO: send to error reporting service
     return false;
   }
 }

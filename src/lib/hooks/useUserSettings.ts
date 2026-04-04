@@ -63,6 +63,7 @@ export function useUserSettings(): UseUserSettingsReturn {
         profileIdRef.current = profile.id;
 
         // user_settings may not yet be in the generated DB types
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- user_settings not yet in generated DB types
         const { data: row } = await (supabase as any)
           .from("user_settings")
           .select("*")
@@ -111,6 +112,7 @@ export function useUserSettings(): UseUserSettingsReturn {
         const payload = { ...pendingWrite.current };
         pendingWrite.current = {};
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- user_settings not yet in generated DB types
         await (supabase as any).from("user_settings").upsert(
           {
             profile_id: pid,

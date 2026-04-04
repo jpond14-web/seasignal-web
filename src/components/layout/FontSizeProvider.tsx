@@ -32,15 +32,17 @@ function applyBodyClass(size: FontSize) {
   document.body.classList.add(`font-${size}`);
 }
 
+function getInitialFontSize(): FontSize {
+  const saved = getCookie("seasignal_font_size") as FontSize | null;
+  return saved && VALID_SIZES.includes(saved) ? saved : "medium";
+}
+
 export function FontSizeProvider({ children }: { children: ReactNode }) {
-  const [fontSize, setFontSizeState] = useState<FontSize>("medium");
+  const [fontSize, setFontSizeState] = useState<FontSize>(getInitialFontSize);
 
   useEffect(() => {
-    const saved = getCookie("seasignal_font_size") as FontSize | null;
-    const size = saved && VALID_SIZES.includes(saved) ? saved : "medium";
-    setFontSizeState(size);
-    applyBodyClass(size);
-  }, []);
+    applyBodyClass(fontSize);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setFontSize = useCallback((size: FontSize) => {
     setFontSizeState(size);

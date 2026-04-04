@@ -16,6 +16,7 @@ const adminNavItems = [
   { href: "/admin/verify", label: "Verification", icon: VerifyIcon, exact: false },
   { href: "/admin/reports", label: "Reports", icon: ReportIcon, exact: false },
   { href: "/admin/channels", label: "Channels", icon: ChannelIcon, exact: false },
+  { href: "/admin/audit", label: "Audit Log", icon: AuditIcon, exact: false },
 ];
 
 export default function AdminLayout({
@@ -192,6 +193,14 @@ function ChannelIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 20 20" fill="currentColor">
       <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
       <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h1a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
+    </svg>
+  );
+}
+
+function AuditIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
     </svg>
   );
 }

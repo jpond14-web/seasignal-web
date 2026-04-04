@@ -85,6 +85,18 @@ self.addEventListener("sync", (event) => {
   if (event.tag === "sync-data") {
     event.waitUntil(handleBackgroundSync());
   }
+  if (event.tag === "send-messages") {
+    // Message drafts are handled by the React component's online listener.
+    // This sync event is registered as a fallback to wake the service worker
+    // and trigger the client page to recheck drafts in localStorage.
+    event.waitUntil(
+      self.clients.matchAll({ type: "window" }).then((windowClients) => {
+        for (const client of windowClients) {
+          client.postMessage({ type: "RETRY_DRAFTS" });
+        }
+      })
+    );
+  }
 });
 
 async function handleBackgroundSync() {

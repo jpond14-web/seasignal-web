@@ -91,7 +91,7 @@ export function NotificationBell() {
 
   // Fetch on mount + subscribe to realtime
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications(); // eslint-disable-line react-hooks/set-state-in-effect -- async fetch on mount is intentional
 
     const supabase = createClient();
     let userId: string | null = null;

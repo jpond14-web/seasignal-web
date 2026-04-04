@@ -338,7 +338,7 @@ export default function DashboardPage() {
           .single();
 
         if (createError || !newConv) {
-          console.error('Failed to create port channel:', createError);
+          // TODO: surface error to user via toast notification
           setJoiningPort(false);
           return;
         }
@@ -361,7 +361,7 @@ export default function DashboardPage() {
       setPortName('');
       router.push(`/messages/${conversationId}`);
     } catch (err) {
-      console.error('Error joining port channel:', err);
+      void err; // TODO: surface error to user via toast notification
     } finally {
       setJoiningPort(false);
     }

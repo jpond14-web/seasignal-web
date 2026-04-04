@@ -110,9 +110,40 @@ function WaveDivider() {
 
 /* ──────────────────────────── Page ──────────────────────────── */
 
+const jsonLdWebApp = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "SeaSignal",
+  description: "Privacy-first professional network for seafarers",
+  url: "https://seasignal.app",
+  applicationCategory: "SocialNetworkingApplication",
+  operatingSystem: "Web",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+};
+
+const jsonLdOrganization = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "SeaSignal",
+  url: "https://seasignal.app",
+  description: "Professional network for seafarers",
+};
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebApp) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdOrganization) }}
+      />
       {/* Header */}
       <header className="relative flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2">

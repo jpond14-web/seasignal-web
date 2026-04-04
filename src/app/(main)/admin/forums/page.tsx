@@ -22,10 +22,6 @@ export default function AdminForumsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
-
   async function loadCategories() {
     const { data } = await supabase
       .from("forum_categories")
@@ -34,6 +30,11 @@ export default function AdminForumsPage() {
     setCategories(data ?? []);
     setLoading(false);
   }
+
+  useEffect(() => {
+    loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function startEdit(cat: ForumCategory) {
     setEditingId(cat.id);
