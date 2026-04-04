@@ -13,6 +13,14 @@ interface Stats {
   pendingVerifications: number;
 }
 
+interface SearchTrends {
+  topTerms: { query: string; count: number }[];
+  byType: { type: string; count: number }[];
+  last24h: number;
+  last7d: number;
+  last30d: number;
+}
+
 interface ActivityItem {
   id: string;
   type: "signup" | "review" | "incident";
@@ -25,6 +33,7 @@ export default function AdminDashboardPage() {
   const supabase = createClient();
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [searchTrends, setSearchTrends] = useState<SearchTrends | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -126,6 +135,64 @@ export default function AdminDashboardPage() {
 
       items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setActivity(items.slice(0, 20));
+
+      // Fetch search analytics
+      const now = new Date();
+      const d24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const d7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const d30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const [
+        { data: allSearches },
+        { count: count24h },
+        { count: count7d },
+        { count: count30d },
+      ] = await Promise.all([
+        supabase
+          .from("search_analytics")
+          .select("search_type, search_query")
+          .order("created_at", { ascending: false })
+          .limit(1000),
+        supabase
+          .from("search_analytics")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", d24h),
+        supabase
+          .from("search_analytics")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", d7d),
+        supabase
+          .from("search_analytics")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", d30d),
+      ]);
+
+      if (allSearches) {
+        // Top terms
+        const termCounts = new Map<string, number>();
+        const typeCounts = new Map<string, number>();
+        for (const s of allSearches) {
+          const q = s.search_query.toLowerCase().trim();
+          termCounts.set(q, (termCounts.get(q) || 0) + 1);
+          typeCounts.set(s.search_type, (typeCounts.get(s.search_type) || 0) + 1);
+        }
+        const topTerms = [...termCounts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([query, count]) => ({ query, count }));
+        const byType = [...typeCounts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(([type, count]) => ({ type, count }));
+
+        setSearchTrends({
+          topTerms,
+          byType,
+          last24h: count24h ?? 0,
+          last7d: count7d ?? 0,
+          last30d: count30d ?? 0,
+        });
+      }
+
       setLoading(false);
     }
 
@@ -186,6 +253,95 @@ export default function AdminDashboardPage() {
           })}
         </div>
       )}
+
+      {/* Search Trends */}
+      <h2 className="text-lg font-semibold mb-4">Search Trends</h2>
+      {!searchTrends && !loading ? (
+        <div className="bg-navy-900 border border-navy-700 rounded-lg p-6 text-center mb-8">
+          <p className="text-slate-400">No search data yet.</p>
+        </div>
+      ) : searchTrends ? (
+        <div className="mb-8 space-y-4">
+          {/* Volume cards */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-navy-900 border border-navy-700 rounded-lg p-4">
+              <p className="text-xs text-slate-400 mb-1">Last 24h</p>
+              <p className="text-2xl font-bold font-mono text-teal-400">
+                {searchTrends.last24h.toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-navy-900 border border-navy-700 rounded-lg p-4">
+              <p className="text-xs text-slate-400 mb-1">Last 7 days</p>
+              <p className="text-2xl font-bold font-mono text-cyan-400">
+                {searchTrends.last7d.toLocaleString()}
+              </p>
+            </div>
+            <div className="bg-navy-900 border border-navy-700 rounded-lg p-4">
+              <p className="text-xs text-slate-400 mb-1">Last 30 days</p>
+              <p className="text-2xl font-bold font-mono text-blue-400">
+                {searchTrends.last30d.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Top searched terms */}
+            <div className="bg-navy-900 border border-navy-700 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-slate-200 mb-3">Top Searched Terms</h3>
+              {searchTrends.topTerms.length === 0 ? (
+                <p className="text-sm text-slate-500">No searches recorded.</p>
+              ) : (
+                <div className="space-y-2">
+                  {searchTrends.topTerms.map((t, i) => (
+                    <div key={t.query} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs text-slate-500 w-5 text-right shrink-0">
+                          {i + 1}.
+                        </span>
+                        <span className="text-sm text-slate-200 truncate">{t.query}</span>
+                      </div>
+                      <span className="text-xs font-mono text-teal-400 shrink-0 ml-2">
+                        {t.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Search volume by type */}
+            <div className="bg-navy-900 border border-navy-700 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-slate-200 mb-3">Searches by Type</h3>
+              {searchTrends.byType.length === 0 ? (
+                <p className="text-sm text-slate-500">No searches recorded.</p>
+              ) : (
+                <div className="space-y-2">
+                  {searchTrends.byType.map((t) => {
+                    const total = searchTrends.byType.reduce((s, x) => s + x.count, 0);
+                    const pct = total > 0 ? (t.count / total) * 100 : 0;
+                    return (
+                      <div key={t.type}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-slate-200 capitalize">{t.type}</span>
+                          <span className="text-xs font-mono text-slate-400">
+                            {t.count} ({pct.toFixed(0)}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-navy-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-teal-500 rounded-full"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
       {activity.length === 0 && !loading ? (

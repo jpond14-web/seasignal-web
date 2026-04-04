@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { trackSearch } from "@/lib/analytics";
 import type { Enums } from "@/lib/supabase/types";
 
 type SeafarerCard = {
@@ -123,6 +124,15 @@ export default function SeafarersPage() {
         setSeafarers(results);
       }
       setLoading(false);
+
+      if (search.trim() && !append) {
+        trackSearch("seafarer", search.trim(), {
+          department: filterDept || undefined,
+          rank: filterRank || undefined,
+          experience: filterExp || undefined,
+          vessel_type: filterVessel || undefined,
+        }, results.length);
+      }
     },
     [supabase, search, filterDept, filterRank, filterExp, filterVessel]
   );

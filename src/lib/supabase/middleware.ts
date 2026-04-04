@@ -38,8 +38,11 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/signup") ||
     request.nextUrl.pathname.startsWith("/callback");
+  const isCompaniesRoute =
+    request.nextUrl.pathname === "/companies" ||
+    request.nextUrl.pathname.startsWith("/companies/");
   const isPublicRoute =
-    request.nextUrl.pathname === "/" || isAuthRoute;
+    request.nextUrl.pathname === "/" || isAuthRoute || isCompaniesRoute;
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();

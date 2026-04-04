@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { trackSearch } from "@/lib/analytics";
 import type { Tables, Enums } from "@/lib/supabase/types";
 
 const vesselTypes: { value: Enums<"vessel_type">; label: string }[] = [
@@ -44,8 +45,13 @@ export default function VesselsPage() {
       }
 
       const { data } = await query;
-      setVessels(data || []);
+      const results = data || [];
+      setVessels(results);
       setLoading(false);
+
+      if (search.trim()) {
+        trackSearch("vessel", search.trim(), { vessel_type: typeFilter || undefined }, results.length);
+      }
     }
     load();
   }, [search, typeFilter]);

@@ -730,6 +730,31 @@ export type Database = {
         };
         Relationships: [];
       };
+      search_analytics: {
+        Row: {
+          id: string;
+          search_type: string;
+          search_query: string;
+          filters: Json;
+          result_count: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          search_type: string;
+          search_query: string;
+          filters?: Json;
+          result_count?: number;
+          created_at?: string;
+        };
+        Update: {
+          search_type?: string;
+          search_query?: string;
+          filters?: Json;
+          result_count?: number;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
