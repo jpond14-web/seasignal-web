@@ -54,7 +54,7 @@ const navSections: NavSection[] = [
 // Flat list for mobile nav
 const navItems = navSections.flatMap((s) => s.items);
 
-export function Sidebar({ userInitial = "U", isAdmin = false }: { userInitial?: string; isAdmin?: boolean }) {
+export function Sidebar({ userInitial = "U", isAdmin = false, avatarUrl }: { userInitial?: string; isAdmin?: boolean; avatarUrl?: string | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -159,6 +159,19 @@ export function Sidebar({ userInitial = "U", isAdmin = false }: { userInitial?: 
           {!collapsed && <span>Settings</span>}
         </Link>
         <Link
+          href="/changelog"
+          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
+            pathname.startsWith("/changelog")
+              ? "text-teal-400 bg-navy-800"
+              : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
+          }`}
+          title={collapsed ? "What's New" : undefined}
+          aria-label="What's New"
+        >
+          <ChangelogIcon className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>What&apos;s New</span>}
+        </Link>
+        <Link
           href="/profile"
           className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
             pathname.startsWith("/profile")
@@ -168,9 +181,13 @@ export function Sidebar({ userInitial = "U", isAdmin = false }: { userInitial?: 
           title={collapsed ? "Profile" : undefined}
           aria-label="Profile"
         >
-          <div className="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200 shrink-0" aria-hidden="true">
-            {userInitial}
-          </div>
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" aria-hidden="true" />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200 shrink-0" aria-hidden="true">
+              {userInitial}
+            </div>
+          )}
           {!collapsed && <span className="truncate">Profile</span>}
         </Link>
         <button
@@ -187,7 +204,7 @@ export function Sidebar({ userInitial = "U", isAdmin = false }: { userInitial?: 
   );
 }
 
-export function MobileNav({ userInitial = "U", isAdmin = false }: { userInitial?: string; isAdmin?: boolean }) {
+export function MobileNav({ userInitial = "U", isAdmin = false, avatarUrl }: { userInitial?: string; isAdmin?: boolean; avatarUrl?: string | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -272,6 +289,18 @@ export function MobileNav({ userInitial = "U", isAdmin = false }: { userInitial?
               <span>Settings</span>
             </Link>
             <Link
+              href="/changelog"
+              onClick={() => setOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                pathname.startsWith("/changelog")
+                  ? "text-teal-400 bg-navy-800"
+                  : "text-slate-300 hover:bg-navy-800/50"
+              }`}
+            >
+              <ChangelogIcon className="w-5 h-5" />
+              <span>What&apos;s New</span>
+            </Link>
+            <Link
               href="/profile"
               onClick={() => setOpen(false)}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
@@ -280,9 +309,13 @@ export function MobileNav({ userInitial = "U", isAdmin = false }: { userInitial?
                   : "text-slate-300 hover:bg-navy-800/50"
               }`}
             >
-              <div className="w-6 h-6 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200">
-                {userInitial}
-              </div>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200">
+                  {userInitial}
+                </div>
+              )}
               <span>Profile</span>
             </Link>
             <button
@@ -448,6 +481,15 @@ function SignOutIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h5a1 1 0 100-2H4V5h4a1 1 0 100-2H3zm11.707 4.293a1 1 0 00-1.414 1.414L14.586 10l-1.293 1.293a1 1 0 001.414 1.414l2-2a1 1 0 000-1.414l-2-2z" clipRule="evenodd" />
       <path fillRule="evenodd" d="M7 10a1 1 0 011-1h8a1 1 0 110 2H8a1 1 0 01-1-1z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function ChangelogIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M5 2a1 1 0 00-1 1v1h12V3a1 1 0 00-1-1H5z" />
+      <path fillRule="evenodd" d="M4 6v11a2 2 0 002 2h8a2 2 0 002-2V6H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
     </svg>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
@@ -20,9 +20,9 @@ const rankCategories: { value: Enums<"rank_category">; label: string }[] = [
 ];
 
 const experienceBands: { value: Enums<"experience_band">; label: string }[] = [
-  { value: "0_2y", label: "0–2 years" },
-  { value: "3_5y", label: "3–5 years" },
-  { value: "6_10y", label: "6–10 years" },
+  { value: "0_2y", label: "0-2 years" },
+  { value: "3_5y", label: "3-5 years" },
+  { value: "6_10y", label: "6-10 years" },
   { value: "10y_plus", label: "10+ years" },
 ];
 
@@ -43,10 +43,13 @@ const vesselTypes: { value: Enums<"vessel_type">; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2MB
+
 export default function EditProfilePage() {
   const router = useRouter();
   const supabase = createClient();
   const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +65,8 @@ export default function EditProfilePage() {
   const [currentPort, setCurrentPort] = useState("");
   const [availableFor, setAvailableFor] = useState<string[]>([]);
   const [selectedVesselTypes, setSelectedVesselTypes] = useState<Enums<"vessel_type">[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -90,6 +95,7 @@ export default function EditProfilePage() {
         setCurrentPort((data as Record<string, unknown>).current_port as string || "");
         setAvailableFor(((data as Record<string, unknown>).available_for as string[]) || []);
         setSelectedVesselTypes(data.vessel_type_tags || []);
+        setAvatarUrl((data as Record<string, unknown>).avatar_url as string | null);
       }
       setLoading(false);
     }
@@ -100,6 +106,71 @@ export default function EditProfilePage() {
     setSelectedVesselTypes((prev) =>
       prev.includes(vt) ? prev.filter((t) => t !== vt) : [...prev, vt]
     );
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
+
+    if (file.size > MAX_AVATAR_SIZE) {
+      showToast("Image must be under 2MB", "error");
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const filePath = `${profile.id}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      showToast(uploadError.message, "error");
+      setUploadingAvatar(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(filePath);
+
+    const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ avatar_url: publicUrl })
+      .eq("id", profile.id);
+
+    if (updateError) {
+      showToast(updateError.message, "error");
+    } else {
+      setAvatarUrl(publicUrl);
+      showToast("Avatar updated");
+    }
+
+    setUploadingAvatar(false);
+    // Reset file input so the same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleRemoveAvatar() {
+    if (!profile) return;
+    setUploadingAvatar(true);
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ avatar_url: null })
+      .eq("id", profile.id);
+
+    if (updateError) {
+      showToast(updateError.message, "error");
+    } else {
+      setAvatarUrl(null);
+      showToast("Avatar removed");
+    }
+    setUploadingAvatar(false);
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -146,6 +217,48 @@ export default function EditProfilePage() {
       <h1 className="text-2xl font-bold mb-6">Edit Profile</h1>
 
       <form onSubmit={handleSave} className="space-y-5">
+        {/* Avatar Section */}
+        <div className="flex flex-col items-center gap-3">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Profile photo"
+              className="w-20 h-20 rounded-full object-cover border-2 border-navy-600"
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-full bg-navy-600 flex items-center justify-center text-2xl font-medium text-slate-200">
+              {displayName?.charAt(0)?.toUpperCase() || "U"}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="px-3 py-1.5 text-xs bg-navy-800 border border-navy-600 rounded hover:bg-navy-700 text-slate-300 transition-colors disabled:opacity-50"
+            >
+              {uploadingAvatar ? "Uploading..." : "Change Photo"}
+            </button>
+            {avatarUrl && (
+              <button
+                type="button"
+                onClick={handleRemoveAvatar}
+                disabled={uploadingAvatar}
+                className="px-3 py-1.5 text-xs bg-navy-800 border border-navy-600 rounded hover:bg-navy-700 text-red-400 transition-colors disabled:opacity-50"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleAvatarUpload}
+            className="hidden"
+          />
+        </div>
+
         <div>
           <label htmlFor="displayName" className="block text-sm text-slate-300 mb-1.5">
             Display Name

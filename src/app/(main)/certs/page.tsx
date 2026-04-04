@@ -25,6 +25,56 @@ const statusColors: Record<string, string> = {
 const CERTS_CACHE_KEY = "seasignal_certs_cache";
 const CERTS_CACHE_TS_KEY = "seasignal_certs_cache_ts";
 
+const CERT_STEPS = [
+  { num: 1, label: "Basics" },
+  { num: 2, label: "Details" },
+  { num: 3, label: "Dates" },
+];
+
+function StepIndicator({ current }: { current: number }) {
+  return (
+    <div className="flex items-center justify-center gap-0 mb-6">
+      {CERT_STEPS.map((step, i) => (
+        <div key={step.num} className="flex items-center">
+          <div className="flex flex-col items-center">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors ${
+                current === step.num
+                  ? "border-teal-500 bg-teal-500 text-navy-950"
+                  : current > step.num
+                    ? "border-teal-500 bg-teal-500/20 text-teal-400"
+                    : "border-navy-600 bg-navy-800 text-slate-500"
+              }`}
+            >
+              {current > step.num ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                step.num
+              )}
+            </div>
+            <span
+              className={`text-xs mt-1 ${
+                current >= step.num ? "text-teal-400" : "text-slate-500"
+              }`}
+            >
+              {step.label}
+            </span>
+          </div>
+          {i < CERT_STEPS.length - 1 && (
+            <div
+              className={`w-12 sm:w-16 h-0.5 mb-5 mx-1 transition-colors ${
+                current > step.num ? "bg-teal-500" : "bg-navy-600"
+              }`}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function CertsPage() {
   const supabase = createClient();
   const [certs, setCerts] = useState<Tables<"certificates">[]>([]);
@@ -34,6 +84,7 @@ export default function CertsPage() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isOfflineCached, setIsOfflineCached] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [formStep, setFormStep] = useState(1);
 
   const [form, setForm] = useState({
     cert_type: "coc" as Enums<"cert_type">,
@@ -109,6 +160,7 @@ export default function CertsPage() {
     setForm({ cert_type: "coc", title: "", cert_number: "", issuing_authority: "", flag_state: "", issue_date: "", expiry_date: "" });
     setEditingId(null);
     setShowForm(false);
+    setFormStep(1);
     setError("");
   }
 
@@ -123,6 +175,7 @@ export default function CertsPage() {
       expiry_date: cert.expiry_date?.split("T")[0] || "",
     });
     setEditingId(cert.id);
+    setFormStep(1);
     setShowForm(true);
   }
 
@@ -166,6 +219,13 @@ export default function CertsPage() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   }
 
+  function canAdvanceStep(): boolean {
+    if (formStep === 1) {
+      return form.title.trim().length > 0;
+    }
+    return true;
+  }
+
   if (loading) return <div className="max-w-3xl mx-auto"><p className="text-slate-400">Loading...</p></div>;
 
   return (
@@ -202,61 +262,104 @@ export default function CertsPage() {
       {showForm && (
         <div className="bg-navy-900 border border-navy-700 rounded-lg p-5 mb-6">
           <h2 className="font-semibold text-slate-100 mb-4">{editingId ? "Edit" : "Add"} Certificate</h2>
-          <form onSubmit={handleSave} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="cert-type" className="block text-sm text-slate-300 mb-1">Type</label>
-                <select id="cert-type" value={form.cert_type} onChange={(e) => setForm({ ...form, cert_type: e.target.value as Enums<"cert_type"> })}
-                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none">
-                  {certTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  CoC = Certificate of Competency &bull; STCW = Standards of Training, Certification and Watchkeeping &bull; GMDSS = Global Maritime Distress and Safety System
-                </p>
+
+          <StepIndicator current={formStep} />
+
+          <form onSubmit={handleSave}>
+            {/* Step 1: Basics */}
+            {formStep === 1 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="cert-type" className="block text-sm text-slate-300 mb-1">Type</label>
+                    <select id="cert-type" value={form.cert_type} onChange={(e) => setForm({ ...form, cert_type: e.target.value as Enums<"cert_type"> })}
+                      className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none">
+                      {certTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      CoC = Certificate of Competency &bull; STCW = Standards of Training, Certification and Watchkeeping &bull; GMDSS = Global Maritime Distress and Safety System
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="cert-title" className="block text-sm text-slate-300 mb-1">Title *</label>
+                    <input id="cert-title" type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label htmlFor="cert-title" className="block text-sm text-slate-300 mb-1">Title *</label>
-                <input id="cert-title" type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
+            )}
+
+            {/* Step 2: Details */}
+            {formStep === 2 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="cert-number" className="block text-sm text-slate-300 mb-1">Cert Number</label>
+                    <input id="cert-number" type="text" value={form.cert_number} onChange={(e) => setForm({ ...form, cert_number: e.target.value })}
+                      className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label htmlFor="cert-issuer" className="block text-sm text-slate-300 mb-1">Issuing Authority</label>
+                    <input id="cert-issuer" type="text" value={form.issuing_authority} onChange={(e) => setForm({ ...form, issuing_authority: e.target.value })}
+                      placeholder="e.g. MCA (UK), MARINA (PH), DG Shipping (IN)"
+                      className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="cert-flag" className="block text-sm text-slate-300 mb-1">Flag State</label>
+                  <input id="cert-flag" type="text" value={form.flag_state} onChange={(e) => setForm({ ...form, flag_state: e.target.value })}
+                    placeholder="e.g. Panama, Marshall Islands, Liberia"
+                    className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="cert-number" className="block text-sm text-slate-300 mb-1">Cert Number</label>
-                <input id="cert-number" type="text" value={form.cert_number} onChange={(e) => setForm({ ...form, cert_number: e.target.value })}
-                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
+            )}
+
+            {/* Step 3: Dates */}
+            {formStep === 3 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="cert-issue-date" className="block text-sm text-slate-300 mb-1">Issue Date</label>
+                    <input id="cert-issue-date" type="date" value={form.issue_date} onChange={(e) => setForm({ ...form, issue_date: e.target.value })}
+                      className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label htmlFor="cert-expiry-date" className="block text-sm text-slate-300 mb-1">Expiry Date</label>
+                    <input id="cert-expiry-date" type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
+                      className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label htmlFor="cert-issuer" className="block text-sm text-slate-300 mb-1">Issuing Authority</label>
-                <input id="cert-issuer" type="text" value={form.issuing_authority} onChange={(e) => setForm({ ...form, issuing_authority: e.target.value })}
-                  placeholder="e.g. MCA (UK), MARINA (PH), DG Shipping (IN)"
-                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label htmlFor="cert-flag" className="block text-sm text-slate-300 mb-1">Flag State</label>
-                <input id="cert-flag" type="text" value={form.flag_state} onChange={(e) => setForm({ ...form, flag_state: e.target.value })}
-                  placeholder="e.g. Panama, Marshall Islands, Liberia"
-                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
-              </div>
-              <div>
-                <label htmlFor="cert-issue-date" className="block text-sm text-slate-300 mb-1">Issue Date</label>
-                <input id="cert-issue-date" type="date" value={form.issue_date} onChange={(e) => setForm({ ...form, issue_date: e.target.value })}
-                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
-              </div>
-              <div>
-                <label htmlFor="cert-expiry-date" className="block text-sm text-slate-300 mb-1">Expiry Date</label>
-                <input id="cert-expiry-date" type="date" value={form.expiry_date} onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
-                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
-              </div>
-            </div>
-            {error && <p className="text-sm text-red-400">{error}</p>}
-            <div className="flex gap-3">
-              <button type="submit" disabled={saving}
-                className="px-4 py-2 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors">
-                {saving ? "Saving..." : editingId ? "Update" : "Add"}
-              </button>
+            )}
+
+            {error && <p className="text-sm text-red-400 mt-4">{error}</p>}
+
+            <div className="flex gap-3 mt-6">
+              {formStep > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setFormStep(formStep - 1)}
+                  className="px-4 py-2 bg-navy-800 border border-navy-600 rounded text-slate-300 text-sm hover:bg-navy-700 transition-colors"
+                >
+                  Back
+                </button>
+              )}
+              {formStep < 3 && (
+                <button
+                  type="button"
+                  disabled={!canAdvanceStep()}
+                  onClick={() => setFormStep(formStep + 1)}
+                  className="px-4 py-2 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors"
+                >
+                  Next
+                </button>
+              )}
+              {formStep === 3 && (
+                <button type="submit" disabled={saving}
+                  className="px-4 py-2 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors">
+                  {saving ? "Saving..." : editingId ? "Update" : "Add Certificate"}
+                </button>
+              )}
               <button type="button" onClick={resetForm}
                 className="px-4 py-2 bg-navy-800 border border-navy-600 rounded text-slate-300 text-sm hover:bg-navy-700 transition-colors">
                 Cancel

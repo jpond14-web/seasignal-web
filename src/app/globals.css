@@ -181,3 +181,8 @@ input, select, textarea {
 input::placeholder, textarea::placeholder {
   color: #7A8BA0 !important; /* Boost placeholder contrast */
 }
+
+/* Font size preferences */
+body.font-small { font-size: 14px; }
+body.font-medium { font-size: 16px; }
+body.font-large { font-size: 18px; }

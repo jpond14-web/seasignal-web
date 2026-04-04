@@ -13,10 +13,11 @@ export default async function MainLayout({
 
   let userInitial = "U";
   let isAdmin = false;
+  let avatarUrl: string | null = null;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("display_name, is_verified")
+      .select("display_name, is_verified, avatar_url")
       .eq("auth_user_id", user.id)
       .single();
     if (profile?.display_name) {
@@ -25,13 +26,16 @@ export default async function MainLayout({
     if (profile?.is_verified) {
       isAdmin = true;
     }
+    if ((profile as Record<string, unknown>)?.avatar_url) {
+      avatarUrl = (profile as Record<string, unknown>).avatar_url as string;
+    }
   }
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar userInitial={userInitial} isAdmin={isAdmin} />
+      <Sidebar userInitial={userInitial} isAdmin={isAdmin} avatarUrl={avatarUrl} />
       <div className="flex flex-col flex-1 min-w-0">
-        <MobileNav userInitial={userInitial} isAdmin={isAdmin} />
+        <MobileNav userInitial={userInitial} isAdmin={isAdmin} avatarUrl={avatarUrl} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
     </div>

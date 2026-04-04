@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Fragment } from "react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -409,6 +409,7 @@ const TOTAL_STEPS = 4;
 export default function ContractCheckPage() {
   const [step, setStep] = useState(1);
   const [result, setResult] = useState<AssessmentResult | null>(null);
+  const [methodologyOpen, setMethodologyOpen] = useState(false);
 
   const [s1, setS1] = useState<StepOneData>({ vesselType: "", rank: "", contractMonths: "" });
   const [s2, setS2] = useState<StepTwoData>({ monthlySalary: "", overtimeRate: "", leavePayIncluded: false, travelAllowance: "", signOnBonus: "" });
@@ -456,6 +457,59 @@ export default function ContractCheckPage() {
       <p className="text-sm text-slate-400 mb-6">
         Evaluate your contract terms against market data. Your contract details are not stored or shared.
       </p>
+
+      {/* Methodology transparency */}
+      <div className="bg-navy-800 border border-navy-700 rounded-lg mb-6">
+        <button
+          type="button"
+          onClick={() => setMethodologyOpen(!methodologyOpen)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-slate-300 hover:text-slate-100 transition-colors"
+        >
+          <span className="font-medium">How is this calculated?</span>
+          <svg
+            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${methodologyOpen ? "rotate-180" : ""}`}
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
+        {methodologyOpen && (
+          <div className="px-4 pb-4 space-y-4 text-sm">
+            <div>
+              <h4 className="text-xs font-semibold text-teal-400 uppercase tracking-wider mb-2">Assessment Categories</h4>
+              <ul className="space-y-1.5 text-slate-300">
+                <li><span className="text-teal-400 font-medium">Pay Assessment</span> <span className="text-slate-500">(35% weight)</span> — compares salary to market data for vessel type and rank</li>
+                <li><span className="text-teal-400 font-medium">Benefits Assessment</span> <span className="text-slate-500">(20% weight)</span> — evaluates leave pay, travel allowance, sign-on bonus</li>
+                <li><span className="text-teal-400 font-medium">Working Conditions</span> <span className="text-slate-500">(25% weight)</span> — hours, rest days, internet, food quality</li>
+                <li><span className="text-teal-400 font-medium">Contract Fairness</span> <span className="text-slate-500">(20% weight)</span> — notice period, repatriation, medical, insurance</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-teal-400 uppercase tracking-wider mb-2">Grade Scale</h4>
+              <div className="flex flex-wrap gap-2 text-xs text-slate-300">
+                <span className="px-2 py-0.5 bg-green-400/10 text-green-400 rounded">A: &ge;80</span>
+                <span className="px-2 py-0.5 bg-teal-400/10 text-teal-400 rounded">B: &ge;65</span>
+                <span className="px-2 py-0.5 bg-amber-400/10 text-amber-400 rounded">C: &ge;50</span>
+                <span className="px-2 py-0.5 bg-orange-400/10 text-orange-400 rounded">D: &ge;35</span>
+                <span className="px-2 py-0.5 bg-red-400/10 text-red-400 rounded">F: &lt;35</span>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-teal-400 uppercase tracking-wider mb-2">Data Sources</h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Salary ranges are based on aggregated industry data and may vary by region, company, and specific rank. We reference MLC 2006 standards for working hours and repatriation requirements.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-teal-400 uppercase tracking-wider mb-2">Privacy</h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Your contract details are processed entirely in your browser. Nothing is stored or transmitted.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Progress bar */}
       {step <= TOTAL_STEPS && (
@@ -790,26 +844,46 @@ export default function ContractCheckPage() {
             {(Object.keys(result.categories) as Array<keyof typeof result.categories>).map((key) => {
               const cat = result.categories[key];
               return (
-                <div key={key} className="bg-navy-900 border border-navy-700 rounded-lg p-5">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-slate-100">{cat.label}</h3>
-                    <span className="text-sm font-mono text-slate-300">{cat.score}/100</span>
+                <Fragment key={key}>
+                  <div className="bg-navy-900 border border-navy-700 rounded-lg p-5">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-slate-100">{cat.label}</h3>
+                      <span className="text-sm font-mono text-slate-300">{cat.score}/100</span>
+                    </div>
+                    <div className="h-2 bg-navy-700 rounded-full overflow-hidden mb-3">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${scoreBarColor(cat.score)}`}
+                        style={{ width: `${cat.score}%` }}
+                      />
+                    </div>
+                    <ul className="space-y-1">
+                      {cat.findings.map((f, i) => (
+                        <li key={i} className="text-sm text-slate-400 flex gap-2">
+                          <span className="text-slate-500 shrink-0">-</span>
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <div className="h-2 bg-navy-700 rounded-full overflow-hidden mb-3">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${scoreBarColor(cat.score)}`}
-                      style={{ width: `${cat.score}%` }}
-                    />
-                  </div>
-                  <ul className="space-y-1">
-                    {cat.findings.map((f, i) => (
-                      <li key={i} className="text-sm text-slate-400 flex gap-2">
-                        <span className="text-slate-500 shrink-0">-</span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                  {key === "pay" && (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 flex gap-3">
+                      <svg className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Pay ranges shown are aggregate figures and do not account for gender-based pay disparities. Research indicates women seafarers may face systemic pay gaps in certain sectors. If you believe your contract reflects gender-based discrimination, contact the ITF (International Transport Workers&apos; Federation) at{" "}
+                        <a
+                          href="https://www.itfseafarers.org"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 underline"
+                        >
+                          itfseafarers.org
+                        </a>
+                      </p>
+                    </div>
+                  )}
+                </Fragment>
               );
             })}
           </div>

@@ -150,7 +150,15 @@ export default function SeafarersPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Seafarer Directory</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <h1 className="text-2xl font-bold">Seafarer Directory</h1>
+        <Link
+          href="/seafarers/find-crew"
+          className="px-4 py-1.5 border border-teal-500 text-teal-400 hover:bg-teal-500/10 rounded text-sm font-medium transition-colors"
+        >
+          Find Crew
+        </Link>
+      </div>
 
       {/* Search & Filters */}
       <div className="bg-navy-900 border border-navy-700 rounded-lg p-4 mb-6">

@@ -4,12 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
-// TODO: persist to user_settings table
-function useSettingsState(key: string, defaultValue: boolean): [boolean, (v: boolean) => void] {
-  const [value, setValue] = useState(defaultValue);
-  return [value, setValue];
-}
+import { useUserSettings, type FontSize } from "@/lib/hooks/useUserSettings";
+import { useFontSize } from "@/components/layout/FontSizeProvider";
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
@@ -45,6 +41,12 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
   );
 }
 
+const FONT_SIZE_OPTIONS: { value: FontSize; label: string; desc: string }[] = [
+  { value: "small", label: "Small", desc: "14px" },
+  { value: "medium", label: "Medium", desc: "16px" },
+  { value: "large", label: "Large", desc: "18px" },
+];
+
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -54,16 +56,10 @@ export default function SettingsPage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
-  // Privacy toggles — TODO: persist to user_settings table
-  const [showProfile, setShowProfile] = useSettingsState("show_profile", true);
-  const [allowReconnect, setAllowReconnect] = useSettingsState("allow_reconnect", true);
-  const [showOnline, setShowOnline] = useSettingsState("show_online", true);
-
-  // Notification toggles — TODO: persist to user_settings table
-  const [emailMessages, setEmailMessages] = useSettingsState("email_messages", false);
-  const [emailCertExpiry, setEmailCertExpiry] = useSettingsState("email_cert_expiry", true);
-  const [pushNotifications, setPushNotifications] = useSettingsState("push_notifications", true);
+  const userSettings = useUserSettings();
+  const { setFontSize: applyFontSize } = useFontSize();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -88,6 +84,12 @@ export default function SettingsPage() {
     };
   }
 
+  function handleFontSizeChange(size: FontSize) {
+    userSettings.setFontSize(size);
+    applyFontSize(size);
+    showToast();
+  }
+
   async function handleChangePassword() {
     setChangingPassword(true);
     setPasswordMessage(null);
@@ -107,15 +109,38 @@ export default function SettingsPage() {
     router.push("/login");
   }
 
+  async function handleExportData() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/export");
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "seasignal-data.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Could show error toast here
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-6">
-        <p className="text-xs text-amber-400">
-          Settings are saved locally on this device. Cross-device sync coming soon.
-        </p>
-      </div>
+      {!userSettings.loading && (
+        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mb-6">
+          <p className="text-xs text-green-400">
+            Settings synced to your account.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-4">
         {/* Account */}
@@ -158,18 +183,18 @@ export default function SettingsPage() {
           <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider mb-4">Privacy</h2>
           <div className="divide-y divide-navy-700">
             <Toggle
-              checked={showProfile}
-              onChange={handleToggle(setShowProfile)}
+              checked={userSettings.show_profile}
+              onChange={handleToggle(userSettings.setShowProfile)}
               label="Show my profile in Seafarer Directory"
             />
             <Toggle
-              checked={allowReconnect}
-              onChange={handleToggle(setAllowReconnect)}
+              checked={userSettings.allow_reconnect}
+              onChange={handleToggle(userSettings.setAllowReconnect)}
               label="Allow crew reconnect suggestions"
             />
             <Toggle
-              checked={showOnline}
-              onChange={handleToggle(setShowOnline)}
+              checked={userSettings.show_online}
+              onChange={handleToggle(userSettings.setShowOnline)}
               label="Show online status"
             />
           </div>
@@ -180,20 +205,61 @@ export default function SettingsPage() {
           <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider mb-4">Notifications</h2>
           <div className="divide-y divide-navy-700">
             <Toggle
-              checked={emailMessages}
-              onChange={handleToggle(setEmailMessages)}
+              checked={userSettings.email_messages}
+              onChange={handleToggle(userSettings.setEmailMessages)}
               label="Email notifications for messages"
             />
             <Toggle
-              checked={emailCertExpiry}
-              onChange={handleToggle(setEmailCertExpiry)}
+              checked={userSettings.email_cert_expiry}
+              onChange={handleToggle(userSettings.setEmailCertExpiry)}
               label="Email notifications for cert expiry"
             />
             <Toggle
-              checked={pushNotifications}
-              onChange={handleToggle(setPushNotifications)}
+              checked={userSettings.push_notifications}
+              onChange={handleToggle(userSettings.setPushNotifications)}
               label="Push notifications"
             />
+          </div>
+        </div>
+
+        {/* Appearance */}
+        <div className="bg-navy-900 border border-navy-700 rounded-lg p-6">
+          <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider mb-4">Appearance</h2>
+          <div>
+            <p className="text-sm text-slate-400 mb-3">Font Size</p>
+            <div className="flex gap-2">
+              {FONT_SIZE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleFontSizeChange(opt.value)}
+                  className={`flex-1 py-2.5 px-3 rounded border text-sm transition-colors ${
+                    userSettings.font_size === opt.value
+                      ? "bg-teal-500/15 border-teal-500/40 text-teal-400"
+                      : "bg-navy-800 border-navy-600 text-slate-400 hover:border-navy-500 hover:text-slate-300"
+                  }`}
+                >
+                  <span className="block font-medium">{opt.label}</span>
+                  <span className="block text-xs mt-0.5 opacity-70">{opt.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Data & Privacy */}
+        <div className="bg-navy-900 border border-navy-700 rounded-lg p-6">
+          <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider mb-4">Data & Privacy</h2>
+          <div>
+            <p className="text-sm text-slate-400 mb-3">
+              Export all your SeaSignal data as a JSON file.
+            </p>
+            <button
+              onClick={handleExportData}
+              disabled={exporting}
+              className="px-4 py-2 bg-navy-800 border border-navy-600 text-sm text-slate-300 rounded hover:bg-navy-700 hover:text-slate-100 transition-colors disabled:opacity-50"
+            >
+              {exporting ? "Downloading..." : "Download My Data"}
+            </button>
           </div>
         </div>
 
