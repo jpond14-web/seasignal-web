@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { UnreadBadge } from "./unread-badge";
+import { NotificationBell } from "./notification-bell";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, badge: false },
@@ -13,7 +14,10 @@ const navItems = [
   { href: "/pay", label: "Pay", icon: PayIcon, badge: false },
   { href: "/certs", label: "Certs", icon: CertIcon, badge: false },
   { href: "/messages", label: "Messages", icon: MessageIcon, badge: true },
+  { href: "/notifications", label: "Notifications", icon: NotificationIcon, badge: false },
+  { href: "/seafarers", label: "Seafarers", icon: SeafarersIcon, badge: false },
   { href: "/forums", label: "Forums", icon: ForumIcon, badge: false },
+  { href: "/jobs", label: "Jobs", icon: JobsIcon, badge: false },
   { href: "/incidents", label: "Incidents", icon: IncidentIcon, badge: false },
   { href: "/rights", label: "Rights", icon: RightsIcon, badge: false },
 ];
@@ -42,11 +46,13 @@ export function Sidebar({ userInitial = "U", isAdmin = false }: { userInitial?: 
             <span className="font-bold text-slate-100 truncate">SeaSignal</span>
           )}
         </Link>
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="ml-auto text-slate-400 hover:text-slate-100 shrink-0"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
+        <div className="ml-auto flex items-center gap-1">
+          <NotificationBell />
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="text-slate-400 hover:text-slate-100 shrink-0"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             {collapsed ? (
               <path d="M6 3l5 5-5 5V3z" />
@@ -54,7 +60,8 @@ export function Sidebar({ userInitial = "U", isAdmin = false }: { userInitial?: 
               <path d="M10 3L5 8l5 5V3z" />
             )}
           </svg>
-        </button>
+          </button>
+        </div>
       </div>
       <nav className="flex-1 py-2 overflow-y-auto" aria-label="Main navigation">
         {navItems.map((item) => {
@@ -155,11 +162,13 @@ export function MobileNav({ userInitial = "U", isAdmin = false }: { userInitial?
           <span className="text-teal-500 font-bold text-lg">⚓</span>
           <span className="font-bold text-slate-100">SeaSignal</span>
         </Link>
-        <button
-          onClick={() => setOpen(!open)}
-          className="text-slate-400 hover:text-slate-100"
-          aria-label="Toggle menu"
-        >
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button
+            onClick={() => setOpen(!open)}
+            className="text-slate-400 hover:text-slate-100"
+            aria-label="Toggle menu"
+          >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             {open ? (
               <path d="M6 18L18 6M6 6l12 12" />
@@ -167,7 +176,8 @@ export function MobileNav({ userInitial = "U", isAdmin = false }: { userInitial?
               <path d="M4 6h16M4 12h16M4 18h16" />
             )}
           </svg>
-        </button>
+          </button>
+        </div>
       </header>
       {open && (
         <div className="md:hidden fixed inset-0 top-14 z-50 bg-navy-950/95 backdrop-blur-sm">
@@ -336,6 +346,31 @@ function AdminIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function SeafarersIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+    </svg>
+  );
+}
+
+function JobsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clipRule="evenodd" />
+      <path d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z" />
+    </svg>
+  );
+}
+
+function NotificationIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
     </svg>
   );
 }

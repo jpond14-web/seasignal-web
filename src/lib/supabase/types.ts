@@ -23,6 +23,8 @@ export type Database = {
           reputation_score: number;
           subscription_tier: Database["public"]["Enums"]["subscription_tier"];
           bio: string | null;
+          current_port: string | null;
+          available_for: string[];
           home_port: string | null;
           last_seen_at: string | null;
           created_at: string;
@@ -41,6 +43,8 @@ export type Database = {
           reputation_score?: number;
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"];
           bio?: string | null;
+          current_port?: string | null;
+          available_for?: string[];
           home_port?: string | null;
           last_seen_at?: string | null;
           created_at?: string;
@@ -59,6 +63,8 @@ export type Database = {
           reputation_score?: number;
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"];
           bio?: string | null;
+          current_port?: string | null;
+          available_for?: string[];
           home_port?: string | null;
           last_seen_at?: string | null;
           updated_at?: string;
@@ -546,6 +552,126 @@ export type Database = {
         };
         Update: {
           value?: number;
+        };
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body: string | null;
+          link: string | null;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body?: string | null;
+          link?: string | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          type?: string;
+          title?: string;
+          body?: string | null;
+          link?: string | null;
+          is_read?: boolean;
+        };
+        Relationships: [];
+      };
+      job_listings: {
+        Row: {
+          id: string;
+          posted_by: string;
+          company_id: string | null;
+          title: string;
+          description: string;
+          vessel_type: string | null;
+          department: string | null;
+          rank_required: string | null;
+          contract_months: number | null;
+          salary_min: number | null;
+          salary_max: number | null;
+          currency: string;
+          embarkation_port: string | null;
+          embarkation_date: string | null;
+          requirements: string[] | null;
+          benefits: string[] | null;
+          status: string;
+          applications_count: number;
+          created_at: string;
+          updated_at: string;
+          expires_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          posted_by: string;
+          company_id?: string | null;
+          title: string;
+          description: string;
+          vessel_type?: string | null;
+          department?: string | null;
+          rank_required?: string | null;
+          contract_months?: number | null;
+          salary_min?: number | null;
+          salary_max?: number | null;
+          currency?: string;
+          embarkation_port?: string | null;
+          embarkation_date?: string | null;
+          requirements?: string[] | null;
+          benefits?: string[] | null;
+          status?: string;
+          applications_count?: number;
+          expires_at?: string | null;
+        };
+        Update: {
+          posted_by?: string;
+          company_id?: string | null;
+          title?: string;
+          description?: string;
+          vessel_type?: string | null;
+          department?: string | null;
+          rank_required?: string | null;
+          contract_months?: number | null;
+          salary_min?: number | null;
+          salary_max?: number | null;
+          currency?: string;
+          embarkation_port?: string | null;
+          embarkation_date?: string | null;
+          requirements?: string[] | null;
+          benefits?: string[] | null;
+          status?: string;
+          applications_count?: number;
+          expires_at?: string | null;
+        };
+        Relationships: [];
+      };
+      job_applications: {
+        Row: {
+          id: string;
+          job_id: string;
+          applicant_id: string;
+          cover_message: string | null;
+          status: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          job_id: string;
+          applicant_id: string;
+          cover_message?: string | null;
+          status?: string;
+        };
+        Update: {
+          cover_message?: string | null;
+          status?: string;
         };
         Relationships: [];
       };

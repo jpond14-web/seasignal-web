@@ -59,6 +59,8 @@ export default function EditProfilePage() {
   const [experienceBand, setExperienceBand] = useState<string>("");
   const [bio, setBio] = useState("");
   const [homePort, setHomePort] = useState("");
+  const [currentPort, setCurrentPort] = useState("");
+  const [availableFor, setAvailableFor] = useState<string[]>([]);
   const [selectedVesselTypes, setSelectedVesselTypes] = useState<Enums<"vessel_type">[]>([]);
 
   useEffect(() => {
@@ -85,6 +87,8 @@ export default function EditProfilePage() {
         setExperienceBand(data.experience_band || "");
         setBio(data.bio || "");
         setHomePort(data.home_port || "");
+        setCurrentPort((data as Record<string, unknown>).current_port as string || "");
+        setAvailableFor(((data as Record<string, unknown>).available_for as string[]) || []);
         setSelectedVesselTypes(data.vessel_type_tags || []);
       }
       setLoading(false);
@@ -113,6 +117,8 @@ export default function EditProfilePage() {
         experience_band: (experienceBand as Enums<"experience_band">) || null,
         bio: bio.trim() || null,
         home_port: homePort.trim() || null,
+        current_port: currentPort.trim() || null,
+        available_for: availableFor,
         vessel_type_tags: selectedVesselTypes.length > 0 ? selectedVesselTypes : null,
       })
       .eq("id", profile.id);
@@ -251,8 +257,58 @@ export default function EditProfilePage() {
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={3}
-            className="w-full px-3 py-2.5 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none resize-none"
+            maxLength={500}
+            placeholder="Tell other seafarers about yourself (max 500 characters)"
+            className="w-full px-3 py-2.5 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none resize-none"
           />
+          <p className="text-xs text-slate-500 mt-1 text-right">{bio.length}/500</p>
+        </div>
+
+        <div>
+          <label htmlFor="currentPort" className="block text-sm text-slate-300 mb-1.5">
+            Current Port
+          </label>
+          <input
+            id="currentPort"
+            type="text"
+            value={currentPort}
+            onChange={(e) => setCurrentPort(e.target.value)}
+            placeholder="e.g. Singapore, Hamburg"
+            className="w-full px-3 py-2.5 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-slate-300 mb-1.5">
+            Available For
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: "jobs", label: "Jobs" },
+              { value: "mentoring", label: "Mentoring" },
+              { value: "networking", label: "Networking" },
+              { value: "advice", label: "Advice" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() =>
+                  setAvailableFor((prev) =>
+                    prev.includes(opt.value)
+                      ? prev.filter((v) => v !== opt.value)
+                      : [...prev, opt.value]
+                  )
+                }
+                className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+                  availableFor.includes(opt.value)
+                    ? "bg-teal-500/20 text-teal-400 border-teal-500/30"
+                    : "bg-navy-800 text-slate-400 border-navy-600 hover:text-slate-300"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
