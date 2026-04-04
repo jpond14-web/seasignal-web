@@ -6,7 +6,7 @@
   --color-navy-900: #0F1D35;
   --color-navy-800: #162544;
   --color-navy-700: #1E3055;
-  --color-navy-600: #2A4066;
+  --color-navy-600: #354D73;
   --color-navy-500: #3A5577;
 
   --color-teal-500: #0EA5E9;
@@ -20,7 +20,7 @@
   --color-slate-200: #E2E8F0;
   --color-slate-300: #CBD5E1;
   --color-slate-400: #94A3B8;
-  --color-slate-500: #64748B;
+  --color-slate-500: #8494A7;
 
   --color-red-400: #F87171;
   --color-red-500: #EF4444;
@@ -172,4 +172,12 @@ body {
 .btn-primary:hover {
   background: linear-gradient(135deg, #38BDF8, #0EA5E9);
   box-shadow: 0 0 16px rgba(14, 165, 233, 0.25);
+}
+
+/* Accessibility: ensure minimum contrast for form elements */
+input, select, textarea {
+  caret-color: #0EA5E9;
+}
+input::placeholder, textarea::placeholder {
+  color: #7A8BA0 !important; /* Boost placeholder contrast */
 }

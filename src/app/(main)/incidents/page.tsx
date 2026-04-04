@@ -144,6 +144,17 @@ export default function IncidentsPage() {
             </div>
             <div>
               <label htmlFor="incident-description" className="block text-sm text-slate-300 mb-1">Description</label>
+              <div className="bg-navy-800/50 border border-navy-700 rounded-lg p-3 mb-3">
+                <p className="text-xs text-slate-400 font-medium mb-1">Document as much detail as possible:</p>
+                <ul className="text-xs text-slate-500 space-y-0.5 list-disc list-inside">
+                  <li>Date, time, and location of the incident</li>
+                  <li>Names of any witnesses (optional)</li>
+                  <li>What happened and who was involved</li>
+                  <li>Any injuries or damage</li>
+                  <li>Actions taken immediately after</li>
+                </ul>
+                <p className="text-[11px] text-slate-500 mt-2 italic">This log is private — only you can see it. It is timestamped for evidential use.</p>
+              </div>
               <textarea id="incident-description" value={form.description_encrypted} onChange={(e) => setForm({ ...form, description_encrypted: e.target.value })} rows={5}
                 placeholder="Describe what happened in detail..."
                 className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none resize-none" />

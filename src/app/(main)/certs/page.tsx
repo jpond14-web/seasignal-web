@@ -210,6 +210,9 @@ export default function CertsPage() {
                   className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none">
                   {certTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  CoC = Certificate of Competency &bull; STCW = Standards of Training, Certification and Watchkeeping &bull; GMDSS = Global Maritime Distress and Safety System
+                </p>
               </div>
               <div>
                 <label htmlFor="cert-title" className="block text-sm text-slate-300 mb-1">Title *</label>
@@ -226,14 +229,16 @@ export default function CertsPage() {
               <div>
                 <label htmlFor="cert-issuer" className="block text-sm text-slate-300 mb-1">Issuing Authority</label>
                 <input id="cert-issuer" type="text" value={form.issuing_authority} onChange={(e) => setForm({ ...form, issuing_authority: e.target.value })}
-                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
+                  placeholder="e.g. MCA (UK), MARINA (PH), DG Shipping (IN)"
+                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label htmlFor="cert-flag" className="block text-sm text-slate-300 mb-1">Flag State</label>
                 <input id="cert-flag" type="text" value={form.flag_state} onChange={(e) => setForm({ ...form, flag_state: e.target.value })}
-                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none" />
+                  placeholder="e.g. Panama, Marshall Islands, Liberia"
+                  className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none" />
               </div>
               <div>
                 <label htmlFor="cert-issue-date" className="block text-sm text-slate-300 mb-1">Issue Date</label>

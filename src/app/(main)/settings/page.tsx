@@ -111,6 +111,12 @@ export default function SettingsPage() {
     <div className="max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-6">
+        <p className="text-xs text-amber-400">
+          Settings are saved locally on this device. Cross-device sync coming soon.
+        </p>
+      </div>
+
       <div className="space-y-4">
         {/* Account */}
         <div className="bg-navy-900 border border-navy-700 rounded-lg p-6">

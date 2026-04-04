@@ -218,6 +218,12 @@ function NewReviewForm() {
           Reviews are batch-released every Sunday to protect anonymity.
         </p>
 
+        <div className="bg-navy-800/50 border border-navy-700 rounded-lg p-3 mt-4">
+          <p className="text-xs text-slate-300 leading-relaxed">
+            <span className="text-teal-400 font-medium">Privacy guarantee:</span> Your identity is never shown publicly, even when posting non-anonymously (only your display name appears). Anonymous reviews are batch-released weekly to prevent identification by timing. Admins cannot see your real name on anonymous reviews.
+          </p>
+        </div>
+
         {error && <p className="text-sm text-red-400">{error}</p>}
 
         <button
