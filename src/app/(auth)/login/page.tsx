@@ -53,30 +53,38 @@ export default function LoginPage() {
 
   return (
     <div className="bg-navy-900 border border-navy-700 rounded-lg p-6">
-      <h2 className="text-xl font-semibold text-slate-100 mb-6">Sign in</h2>
+      <h2 className="text-xl font-semibold text-slate-100">Sign in</h2>
+      <p className="text-slate-500 text-sm mt-1 mb-6">Welcome back, sailor</p>
 
-      <div className="flex gap-2 mb-6">
+      {/* Mode toggle with bottom border indicator */}
+      <div className="flex gap-0 mb-6 border-b border-navy-700">
         <button
           type="button"
           onClick={() => setMode("magic")}
-          className={`flex-1 py-2 px-3 text-sm rounded transition-colors ${
+          className={`flex-1 py-2.5 px-3 text-sm transition-colors relative ${
             mode === "magic"
-              ? "bg-teal-500/20 text-teal-400 border border-teal-500/30"
-              : "bg-navy-800 text-slate-400 border border-navy-700 hover:text-slate-300"
+              ? "text-teal-400 font-medium"
+              : "text-slate-500 hover:text-slate-300"
           }`}
         >
           Magic Link
+          {mode === "magic" && (
+            <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-teal-500 rounded-full" />
+          )}
         </button>
         <button
           type="button"
           onClick={() => setMode("password")}
-          className={`flex-1 py-2 px-3 text-sm rounded transition-colors ${
+          className={`flex-1 py-2.5 px-3 text-sm transition-colors relative ${
             mode === "password"
-              ? "bg-teal-500/20 text-teal-400 border border-teal-500/30"
-              : "bg-navy-800 text-slate-400 border border-navy-700 hover:text-slate-300"
+              ? "text-teal-400 font-medium"
+              : "text-slate-500 hover:text-slate-300"
           }`}
         >
           Password
+          {mode === "password" && (
+            <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-teal-500 rounded-full" />
+          )}
         </button>
       </div>
 

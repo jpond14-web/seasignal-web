@@ -48,9 +48,13 @@ export default function SignupPage() {
 
   return (
     <div className="bg-navy-900 border border-navy-700 rounded-lg p-6">
-      <h2 className="text-xl font-semibold text-slate-100 mb-6">
+      <h2 className="text-xl font-semibold text-slate-100">
         Create your account
       </h2>
+      <p className="text-slate-500 text-sm mt-1">Join the crew</p>
+      <p className="text-slate-500 text-xs mt-2 mb-6">
+        Free forever. Anonymous by default. No employer access.
+      </p>
 
       <form onSubmit={handleSignup}>
         <div className="space-y-4">
@@ -123,7 +127,14 @@ export default function SignupPage() {
         </div>
       </form>
 
-      <p className="text-center text-sm text-slate-400 mt-6">
+      {/* Divider */}
+      <div className="flex items-center gap-3 my-6">
+        <div className="flex-1 h-px bg-navy-700" />
+        <span className="text-xs text-slate-600">or</span>
+        <div className="flex-1 h-px bg-navy-700" />
+      </div>
+
+      <p className="text-center text-sm text-slate-400">
         Already have an account?{" "}
         <Link href="/login" className="text-teal-400 hover:text-teal-300">
           Sign in

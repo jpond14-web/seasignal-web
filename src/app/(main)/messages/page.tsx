@@ -131,75 +131,97 @@ export default function MessagesPage() {
 
     if (!convos) { setLoading(false); return; }
 
-    // Get unread counts per conversation
-    const enriched: ConversationWithMeta[] = [];
-    for (const c of convos) {
-      const membership = membershipMap.get(c.id);
-      const lastRead = membership?.last_read_at;
+    // --- Batch query: unread counts ---
+    // Find the earliest last_read_at to use as a floor for the messages query
+    const earliestLastRead = memberships.reduce<string | null>((earliest, m) => {
+      if (!m.last_read_at) return null; // null means "never read" -> need all
+      if (earliest === null) return null;
+      return m.last_read_at < earliest ? m.last_read_at : earliest;
+    }, memberships[0]?.last_read_at ?? null);
 
-      // Count unread messages
-      let unreadCount = 0;
-      if (lastRead) {
-        const { count } = await supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .eq("conversation_id", c.id)
-          .gt("created_at", lastRead)
-          .neq("sender_id", profile.id);
-        unreadCount = count || 0;
-      } else {
-        const { count } = await supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .eq("conversation_id", c.id)
-          .neq("sender_id", profile.id);
-        unreadCount = count || 0;
-      }
+    // Fetch all unread messages across all conversations in ONE query
+    let unreadQuery = supabase
+      .from("messages")
+      .select("conversation_id, created_at")
+      .in("conversation_id", ids)
+      .neq("sender_id", profile.id);
 
-      // For DMs, get the partner info
-      let dmPartnerName: string | undefined;
-      let dmPartnerOnline = false;
-      if (c.type === "dm") {
-        const { data: members } = await supabase
-          .from("conversation_members")
-          .select("profile_id")
-          .eq("conversation_id", c.id)
-          .neq("profile_id", profile.id)
-          .limit(1);
-        if (members && members[0]) {
-          const { data: partnerProfile } = await supabase
-            .from("profiles")
-            .select("display_name, last_seen_at")
-            .eq("id", members[0].profile_id)
-            .single();
-          if (partnerProfile) {
-            dmPartnerName = partnerProfile.display_name;
-            dmPartnerOnline = isOnline(partnerProfile.last_seen_at);
-          }
+    if (earliestLastRead) {
+      unreadQuery = unreadQuery.gt("created_at", earliestLastRead);
+    }
+
+    const { data: unreadMessages } = await unreadQuery;
+
+    // Count per conversation, respecting each conversation's own last_read_at
+    const unreadCountMap = new Map<string, number>();
+    if (unreadMessages) {
+      for (const msg of unreadMessages) {
+        const membership = membershipMap.get(msg.conversation_id);
+        const lastRead = membership?.last_read_at;
+        // If no lastRead, all messages are unread; otherwise only those after lastRead
+        if (!lastRead || msg.created_at > lastRead) {
+          unreadCountMap.set(msg.conversation_id, (unreadCountMap.get(msg.conversation_id) || 0) + 1);
         }
       }
+    }
 
-      // Get member count for channels/groups
-      let memberCount = 0;
-      if (c.type !== "dm") {
-        const { count } = await supabase
-          .from("conversation_members")
-          .select("*", { count: "exact", head: true })
-          .eq("conversation_id", c.id);
-        memberCount = count || 0;
+    // --- Batch query: all conversation_members for all conversations ---
+    const { data: allMembers } = await supabase
+      .from("conversation_members")
+      .select("conversation_id, profile_id")
+      .in("conversation_id", ids);
+
+    // Build member count map and DM partner ID map
+    const memberCountMap = new Map<string, number>();
+    const dmPartnerIdMap = new Map<string, string>();
+    const dmConvoIds = new Set(convos.filter(c => c.type === "dm").map(c => c.id));
+    const nonDmConvoIds = new Set(convos.filter(c => c.type !== "dm").map(c => c.id));
+
+    if (allMembers) {
+      for (const m of allMembers) {
+        // Count members for non-DM conversations
+        if (nonDmConvoIds.has(m.conversation_id)) {
+          memberCountMap.set(m.conversation_id, (memberCountMap.get(m.conversation_id) || 0) + 1);
+        }
+        // Find DM partner (the member that isn't us)
+        if (dmConvoIds.has(m.conversation_id) && m.profile_id !== profile.id) {
+          dmPartnerIdMap.set(m.conversation_id, m.profile_id);
+        }
       }
+    }
 
-      enriched.push({
+    // --- Batch query: DM partner profiles ---
+    const partnerIds = [...new Set(dmPartnerIdMap.values())];
+    const partnerProfileMap = new Map<string, { display_name: string; last_seen_at: string | null }>();
+    if (partnerIds.length > 0) {
+      const { data: partnerProfiles } = await supabase
+        .from("profiles")
+        .select("id, display_name, last_seen_at")
+        .in("id", partnerIds);
+      if (partnerProfiles) {
+        for (const p of partnerProfiles) {
+          partnerProfileMap.set(p.id, { display_name: p.display_name, last_seen_at: p.last_seen_at });
+        }
+      }
+    }
+
+    // --- Assemble enriched conversations ---
+    const enriched: ConversationWithMeta[] = convos.map(c => {
+      const membership = membershipMap.get(c.id);
+      const partnerId = dmPartnerIdMap.get(c.id);
+      const partner = partnerId ? partnerProfileMap.get(partnerId) : undefined;
+
+      return {
         ...c,
         is_pinned: membership?.is_pinned || false,
         is_archived: membership?.is_archived || false,
-        last_read_at: lastRead,
-        unread_count: unreadCount,
-        dm_partner_name: dmPartnerName,
-        dm_partner_online: dmPartnerOnline,
-        member_count: memberCount,
-      });
-    }
+        last_read_at: membership?.last_read_at,
+        unread_count: unreadCountMap.get(c.id) || 0,
+        dm_partner_name: partner?.display_name,
+        dm_partner_online: partner ? isOnline(partner.last_seen_at) : false,
+        member_count: memberCountMap.get(c.id) || 0,
+      };
+    });
 
     setConversations(enriched);
     setLoading(false);
@@ -645,7 +667,7 @@ export default function MessagesPage() {
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className={`w-3.5 h-3.5 ${newEncrypted ? "text-teal-400" : "text-slate-500"}`}>
                 <path fillRule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" clipRule="evenodd" />
               </svg>
-              End-to-end encrypted
+              End-to-end encrypted (keys stored in this browser only)
             </label>
             <button
               id="encrypt-toggle"
@@ -746,6 +768,17 @@ export default function MessagesPage() {
           >
             {tab === "direct" ? "Start a Conversation" : "Browse Channels"}
           </button>
+          {tab === "direct" && (
+            <div className="mt-4 pt-3 border-t border-navy-700">
+              <p className="text-slate-500 text-sm">You can also browse Channels to find active communities</p>
+              <button
+                onClick={() => setTab("channels")}
+                className="mt-2 inline-flex items-center px-3 py-1.5 bg-navy-800 border border-navy-600 hover:border-navy-500 text-slate-300 text-sm rounded transition-colors"
+              >
+                Browse Channels
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <>

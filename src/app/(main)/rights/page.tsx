@@ -39,7 +39,7 @@ export default function RightsPage() {
             className={`flex-1 py-2 px-3 text-sm rounded border transition-colors ${
               tab === t ? "bg-teal-500/20 text-teal-400 border-teal-500/30" : "bg-navy-800 text-slate-400 border-navy-600"
             }`}>
-            {t === "guide" ? "MLC Guide" : t === "check" ? "Am I Being Screwed?" : "Emergency Contacts"}
+            {t === "guide" ? "MLC Guide" : t === "check" ? "Quick Check" : "Emergency Contacts"}
           </button>
         ))}
       </div>
@@ -80,7 +80,7 @@ export default function RightsPage() {
       {tab === "check" && (
         <div className="space-y-4">
           <div className="bg-navy-900 border border-navy-700 rounded-lg p-5">
-            <h2 className="text-lg font-semibold text-slate-100 mb-1">Am I Being Screwed?</h2>
+            <h2 className="text-lg font-semibold text-slate-100 mb-1">Quick Rights Check</h2>
             <p className="text-sm text-slate-400 mb-4">Answer these questions about your current situation.</p>
 
             <div className="space-y-3">

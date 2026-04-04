@@ -7,22 +7,52 @@ import { createClient } from "@/lib/supabase/client";
 import { UnreadBadge } from "./unread-badge";
 import { NotificationBell } from "./notification-bell";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, badge: false },
-  { href: "/companies", label: "Companies", icon: CompanyIcon, badge: false },
-  { href: "/agencies", label: "Agencies", icon: AgencyIcon, badge: false },
-  { href: "/vessels", label: "Vessels", icon: VesselIcon, badge: false },
-  { href: "/pay", label: "Pay", icon: PayIcon, badge: false },
-  { href: "/certs", label: "Certs", icon: CertIcon, badge: false },
-  { href: "/sea-time", label: "Sea Time", icon: SeaTimeIcon, badge: false },
-  { href: "/messages", label: "Messages", icon: MessageIcon, badge: true },
-  { href: "/notifications", label: "Notifications", icon: NotificationIcon, badge: false },
-  { href: "/seafarers", label: "Seafarers", icon: SeafarersIcon, badge: false },
-  { href: "/forums", label: "Forums", icon: ForumIcon, badge: false },
-  { href: "/incidents", label: "Incidents", icon: IncidentIcon, badge: false },
-  { href: "/rights", label: "Rights", icon: RightsIcon, badge: false },
-  { href: "/contract-check", label: "Contract Check", icon: ContractCheckIcon, badge: false },
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge: boolean };
+type NavSection = { label: string; items: NavItem[] };
+
+const navSections: NavSection[] = [
+  {
+    label: "MAIN",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, badge: false },
+      { href: "/messages", label: "Messages", icon: MessageIcon, badge: true },
+    ],
+  },
+  {
+    label: "INTEL",
+    items: [
+      { href: "/companies", label: "Companies", icon: CompanyIcon, badge: false },
+      { href: "/agencies", label: "Agencies", icon: AgencyIcon, badge: false },
+      { href: "/vessels", label: "Vessels", icon: VesselIcon, badge: false },
+      { href: "/pay", label: "Pay", icon: PayIcon, badge: false },
+    ],
+  },
+  {
+    label: "MY CAREER",
+    items: [
+      { href: "/certs", label: "Certs", icon: CertIcon, badge: false },
+      { href: "/sea-time", label: "Sea Time", icon: SeaTimeIcon, badge: false },
+      { href: "/contract-check", label: "Contract Check", icon: ContractCheckIcon, badge: false },
+    ],
+  },
+  {
+    label: "COMMUNITY",
+    items: [
+      { href: "/forums", label: "Forums", icon: ForumIcon, badge: false },
+      { href: "/seafarers", label: "Seafarers", icon: SeafarersIcon, badge: false },
+    ],
+  },
+  {
+    label: "SAFETY",
+    items: [
+      { href: "/incidents", label: "Incidents", icon: IncidentIcon, badge: false },
+      { href: "/rights", label: "Rights", icon: RightsIcon, badge: false },
+    ],
+  },
 ];
+
+// Flat list for mobile nav
+const navItems = navSections.flatMap((s) => s.items);
 
 export function Sidebar({ userInitial = "U", isAdmin = false }: { userInitial?: string; isAdmin?: boolean }) {
   const pathname = usePathname();
@@ -66,27 +96,38 @@ export function Sidebar({ userInitial = "U", isAdmin = false }: { userInitial?: 
         </div>
       </div>
       <nav className="flex-1 py-2 overflow-y-auto" aria-label="Main navigation">
-        {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset rounded ${
-                isActive
-                  ? "text-teal-400 bg-navy-800"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
-              }`}
-              title={collapsed ? item.label : undefined}
-              aria-label={item.label}
-              aria-current={isActive ? "page" : undefined}
-            >
-              <item.icon className="w-5 h-5 shrink-0" />
-              {!collapsed && <span className="flex-1">{item.label}</span>}
-              {item.badge && <UnreadBadge />}
-            </Link>
-          );
-        })}
+        {navSections.map((section, sIdx) => (
+          <div key={section.label}>
+            {collapsed ? (
+              sIdx > 0 && <div className="mx-3 my-2 border-t border-navy-700" />
+            ) : (
+              <span className="text-[10px] uppercase tracking-wider text-slate-600 font-medium px-4 mt-4 mb-1 block">
+                {section.label}
+              </span>
+            )}
+            {section.items.map((item) => {
+              const isActive = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset rounded ${
+                    isActive
+                      ? "text-teal-400 bg-navy-800"
+                      : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
+                  }`}
+                  title={collapsed ? item.label : undefined}
+                  aria-label={item.label}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  {!collapsed && <span className="flex-1">{item.label}</span>}
+                  {item.badge && <UnreadBadge />}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div className="border-t border-navy-700 p-2 flex flex-col gap-0.5">
         {isAdmin && (

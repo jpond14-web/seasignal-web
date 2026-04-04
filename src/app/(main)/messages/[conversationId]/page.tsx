@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -54,6 +54,7 @@ function formatLastSeen(lastSeen: string | null): string {
 
 export default function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
+  const router = useRouter();
   const supabase = createClient();
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -90,6 +91,9 @@ export default function ConversationPage() {
   // Typing indicators
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Typing channel ref (reused across handleTyping calls)
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // File upload
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -263,18 +267,21 @@ export default function ConversationPage() {
     });
 
     channel.subscribe();
+    typingChannelRef.current = channel;
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      typingChannelRef.current = null;
+      supabase.removeChannel(channel);
+    };
   }, [conversationId, profileId]);
 
   function handleTyping() {
-    if (!profileId) return;
-    const channel = supabase.channel(`typing:${conversationId}`);
-    channel.track({ typing: true, name: profileName });
+    if (!profileId || !typingChannelRef.current) return;
+    typingChannelRef.current.track({ typing: true, name: profileName });
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      channel.track({ typing: false, name: profileName });
+      typingChannelRef.current?.track({ typing: false, name: profileName });
     }, 3000);
   }
 
@@ -361,9 +368,35 @@ export default function ConversationPage() {
     loadMessages();
   }
 
+  async function deleteMessage(msgId: string) {
+    if (!profileId) return;
+    await supabase.from("messages").delete().eq("id", msgId).eq("sender_id", profileId);
+    loadMessages();
+  }
+
+  async function leaveConversation() {
+    if (!profileId) return;
+    const confirmed = window.confirm("Are you sure you want to leave this conversation?");
+    if (!confirmed) return;
+    await supabase.from("conversation_members").delete()
+      .eq("conversation_id", conversationId)
+      .eq("profile_id", profileId);
+    router.push("/messages");
+  }
+
+  // File upload error state
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !profileId) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("File too large. Maximum size is 10MB.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    setUploadError(null);
     setUploading(true);
 
     const fileExt = file.name.split(".").pop();
@@ -484,6 +517,15 @@ export default function ConversationPage() {
               : `${members.length} members, ${onlineCount} online`}
           </p>
         </div>
+        {convoType && convoType !== "dm" && (
+          <button
+            onClick={leaveConversation}
+            className="px-2.5 py-1.5 text-xs text-red-400/80 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded transition-colors shrink-0"
+            title="Leave conversation"
+          >
+            Leave
+          </button>
+        )}
         <button
           onClick={() => setSearchOpen(!searchOpen)}
           className="p-2 text-slate-400 hover:text-slate-300 rounded hover:bg-navy-800 transition-colors shrink-0"
@@ -494,6 +536,13 @@ export default function ConversationPage() {
           </svg>
         </button>
       </div>
+
+      {/* E2E encryption notice */}
+      {isEncrypted && (
+        <p className="text-[11px] text-amber-400/70 px-3 py-1">
+          &#x26A0;&#xFE0F; E2E keys are stored locally in your browser. Messages cannot be read on other devices.
+        </p>
+      )}
 
       {/* Search panel */}
       {searchOpen && (
@@ -660,6 +709,17 @@ export default function ConversationPage() {
                       </div>
                     )}
                   </div>
+                  {isMine && (
+                    <button
+                      onClick={() => deleteMessage(msg.id)}
+                      className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-navy-800 transition-colors"
+                      title="Delete"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -699,6 +759,14 @@ export default function ConversationPage() {
               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
+        </div>
+      )}
+
+      {/* Upload error */}
+      {uploadError && (
+        <div className="flex items-center justify-between px-3 py-1.5 text-xs text-red-400 bg-red-500/10 border-t border-red-500/20">
+          <span>{uploadError}</span>
+          <button onClick={() => setUploadError(null)} className="text-red-400/60 hover:text-red-400 ml-2" aria-label="Dismiss">&times;</button>
         </div>
       )}
 

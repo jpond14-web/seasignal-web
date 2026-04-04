@@ -20,6 +20,13 @@ interface SignalCard {
   borderClass: string;
 }
 
+interface OnboardingStatus {
+  profileComplete: boolean;
+  hasCerts: boolean;
+  hasSeaTime: boolean;
+  hasCompanyFollows: boolean;
+}
+
 export default function DashboardPage() {
   const supabase = createClient();
   const router = useRouter();
@@ -31,6 +38,12 @@ export default function DashboardPage() {
   const [portName, setPortName] = useState('');
   const [joiningPort, setJoiningPort] = useState(false);
   const [activePortCount, setActivePortCount] = useState(0);
+  const [onboarding, setOnboarding] = useState<OnboardingStatus>({
+    profileComplete: false,
+    hasCerts: false,
+    hasSeaTime: false,
+    hasCompanyFollows: false,
+  });
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -250,6 +263,31 @@ export default function DashboardPage() {
 
     setActivePortCount(portCount ?? 0);
 
+    // 7. Onboarding completion checks
+    const profileComplete = !!(prof.department_tag && prof.rank_range);
+
+    const { count: certCount } = await supabase
+      .from('certificates')
+      .select('*', { count: 'exact', head: true })
+      .eq('profile_id', prof.id);
+
+    const { count: seaTimeCount } = await supabase
+      .from('sea_time_records')
+      .select('*', { count: 'exact', head: true })
+      .eq('profile_id', prof.id);
+
+    const { count: followCount } = await supabase
+      .from('company_follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('profile_id', prof.id);
+
+    setOnboarding({
+      profileComplete,
+      hasCerts: (certCount ?? 0) > 0,
+      hasSeaTime: (seaTimeCount ?? 0) > 0,
+      hasCompanyFollows: (followCount ?? 0) > 0,
+    });
+
     setSignals(cards);
     setLoading(false);
   }, [supabase, router]);
@@ -328,15 +366,29 @@ export default function DashboardPage() {
     }
   };
 
+  const completedCount = [
+    onboarding.profileComplete,
+    onboarding.hasCerts,
+    onboarding.hasSeaTime,
+    onboarding.hasCompanyFollows,
+  ].filter(Boolean).length;
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto py-8">
         <div className="flex items-center gap-3 mb-8">
-          <div className="h-8 w-48 bg-navy-800 rounded animate-pulse" />
+          <div className="h-8 w-48 bg-navy-800/50 rounded-lg animate-pulse" />
         </div>
+        {/* Large Port Beacon skeleton */}
+        <div className="h-16 bg-navy-800/50 rounded-lg animate-pulse mb-6" />
+        {/* Staggered medium skeleton cards */}
         <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-20 bg-navy-900 border border-navy-700 rounded-lg animate-pulse" />
+          {[0, 1, 2, 3].map(i => (
+            <div
+              key={i}
+              className="h-14 bg-navy-800/50 rounded-lg animate-pulse"
+              style={{ animationDelay: `${i * 150}ms`, animationDuration: '1.5s' }}
+            />
           ))}
         </div>
       </div>
@@ -344,6 +396,8 @@ export default function DashboardPage() {
   }
 
   if (!profile) return null;
+
+  const displayName = profile.display_name || 'Seafarer';
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -353,7 +407,7 @@ export default function DashboardPage() {
           The Pulse
         </h1>
         <p className="text-slate-400 text-sm">
-          Welcome back, {profile.display_name}
+          Welcome back, {displayName}
           {' \u00B7 '}
           {signals.length > 0 ? `${signals.length} signal${signals.length > 1 ? 's' : ''}` : 'All quiet'}
         </p>
@@ -416,34 +470,66 @@ export default function DashboardPage() {
 
       {/* Signal Feed */}
       {sortedSignals.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-4xl mb-4">{'\u2693'}</div>
-          <h2 className="text-lg font-semibold text-slate-200 mb-2">
-            Welcome to SeaSignal
-          </h2>
-          <p className="text-slate-400 text-sm mb-6 max-w-md mx-auto">
-            Start by adding your crew history and following companies.
-            Your personalized signal feed will appear here.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Link
+        <div className="py-8">
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-slate-100 mb-1">
+              Welcome aboard, {displayName}!
+            </h2>
+            <p className="text-slate-400 text-sm">
+              Your Pulse feed is quiet — let&apos;s change that. Complete these steps to unlock your full SeaSignal experience.
+            </p>
+          </div>
+
+          {/* Progress bar */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-slate-300">
+                {completedCount} of 5 complete
+              </span>
+              <span className="text-xs text-slate-500">
+                {Math.round((completedCount / 5) * 100)}%
+              </span>
+            </div>
+            <div className="h-2 bg-navy-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-teal-500 rounded-full transition-all duration-500"
+                style={{ width: `${(completedCount / 5) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Onboarding checklist */}
+          <div className="space-y-3">
+            <OnboardingItem
+              completed={onboarding.profileComplete}
+              title="Complete your profile"
+              description="Set your rank, department, and vessel type preferences"
               href="/profile/edit"
-              className="bg-teal-600 hover:bg-teal-500 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors"
-            >
-              Complete Profile
-            </Link>
-            <Link
-              href="/companies"
-              className="bg-navy-800 hover:bg-navy-700 text-slate-200 px-5 py-2.5 rounded-lg font-semibold border border-navy-600 transition-colors"
-            >
-              Browse Companies
-            </Link>
-            <Link
+            />
+            <OnboardingItem
+              completed={onboarding.hasCerts}
+              title="Add your certificates"
+              description="Track expiry dates and get timely alerts"
               href="/certs"
-              className="bg-navy-800 hover:bg-navy-700 text-slate-200 px-5 py-2.5 rounded-lg font-semibold border border-navy-600 transition-colors"
-            >
-              Add Certificates
-            </Link>
+            />
+            <OnboardingItem
+              completed={onboarding.hasSeaTime}
+              title="Log your sea time"
+              description="Build your career record and track STCW progress"
+              href="/sea-time"
+            />
+            <OnboardingItem
+              completed={onboarding.hasCompanyFollows}
+              title="Browse companies"
+              description="Follow companies you've worked with"
+              href="/companies"
+            />
+            <OnboardingItem
+              completed={false}
+              title="Join the forums"
+              description="Connect with fellow seafarers"
+              href="/forums"
+            />
           </div>
         </div>
       ) : (
@@ -495,6 +581,53 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function OnboardingItem({
+  completed,
+  title,
+  description,
+  href,
+}: {
+  completed: boolean;
+  title: string;
+  description: string;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-4 bg-teal-500/5 border border-navy-700 rounded-lg p-4 hover:border-teal-500/30 transition-all ${completed ? 'opacity-60' : ''}`}
+    >
+      {/* Checkbox */}
+      <div className="flex-shrink-0">
+        {completed ? (
+          <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center">
+            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        ) : (
+          <div className="w-6 h-6 rounded-full border-2 border-teal-500" />
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <h3 className={`text-sm font-semibold leading-tight ${completed ? 'text-slate-400' : 'text-slate-100'}`}>
+          {title}
+        </h3>
+        <p className={`text-xs mt-0.5 ${completed ? 'text-slate-500' : 'text-slate-400'}`}>
+          {description}
+        </p>
+      </div>
+
+      {/* Arrow */}
+      <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </Link>
   );
 }
 
