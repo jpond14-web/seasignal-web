@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -185,7 +186,7 @@ export function Sidebar({ userInitial = "U", isAdmin = false, avatarUrl }: { use
           aria-label="Profile"
         >
           {avatarUrl ? (
-            <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" aria-hidden="true" />
+            <Image src={avatarUrl} alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" aria-hidden="true" />
           ) : (
             <div className="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200 shrink-0" aria-hidden="true">
               {userInitial}
@@ -315,7 +316,7 @@ export function MobileNav({ userInitial = "U", isAdmin = false, avatarUrl }: { u
               }`}
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
+                <Image src={avatarUrl} alt="" width={24} height={24} className="w-6 h-6 rounded-full object-cover" />
               ) : (
                 <div className="w-6 h-6 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200">
                   {userInitial}

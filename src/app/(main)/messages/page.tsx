@@ -59,6 +59,7 @@ function isChannel(type: ConversationType): boolean {
 
 export default function MessagesPage() {
   const supabase = createClient();
+  const supabaseRef = useRef(supabase);
   const router = useRouter();
   const [conversations, setConversations] = useState<ConversationWithMeta[]>([]);
   const [allChannels, setAllChannels] = useState<ConversationWithMeta[]>([]);
@@ -94,13 +95,14 @@ export default function MessagesPage() {
 
   // Heartbeat: update last_seen_at
   useEffect(() => {
+    const sb = supabaseRef.current;
     let interval: NodeJS.Timeout;
     async function heartbeat() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await sb.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase.from("profiles").select("id").eq("auth_user_id", user.id).single();
+        const { data: profile } = await sb.from("profiles").select("id").eq("auth_user_id", user.id).single();
         if (profile) {
-          await supabase.from("profiles").update({ last_seen_at: new Date().toISOString() }).eq("id", profile.id);
+          await sb.from("profiles").update({ last_seen_at: new Date().toISOString() }).eq("id", profile.id);
         }
       }
     }
@@ -121,8 +123,6 @@ export default function MessagesPage() {
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [openActionsId]);
-
-  useEffect(() => { load(); }, []);
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -266,7 +266,9 @@ export default function MessagesPage() {
 
     setConversations(enriched);
     setLoading(false);
-  }, []);
+  }, [supabase]);
+
+  useEffect(() => { load(); }, [load]);
 
   // Load browseable channels
   useEffect(() => {

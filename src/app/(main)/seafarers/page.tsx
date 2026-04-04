@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { trackSearch } from "@/lib/analytics";
@@ -243,9 +244,11 @@ export default function SeafarersPage() {
                   <div className="relative shrink-0">
                     <div className="w-12 h-12 rounded-full bg-navy-700 flex items-center justify-center text-lg font-bold text-teal-400">
                       {s.avatar_url ? (
-                        <img
+                        <Image
                           src={s.avatar_url}
                           alt=""
+                          width={48}
+                          height={48}
                           className="w-12 h-12 rounded-full object-cover"
                         />
                       ) : (

@@ -56,28 +56,35 @@ export default function AdminChannelsPage() {
       return;
     }
 
-    // Get member and message counts
-    const enriched: Channel[] = await Promise.all(
-      convos.map(async (c) => {
-        const [{ count: memberCount }, { count: messageCount }] =
-          await Promise.all([
-            supabase
-              .from("conversation_members")
-              .select("*", { count: "exact", head: true })
-              .eq("conversation_id", c.id),
-            supabase
-              .from("messages")
-              .select("*", { count: "exact", head: true })
-              .eq("conversation_id", c.id),
-          ]);
+    // Batch-fetch member and message counts in two queries instead of 2*N
+    const convoIds = convos.map((c) => c.id);
 
-        return {
-          ...c,
-          member_count: memberCount ?? 0,
-          message_count: messageCount ?? 0,
-        };
-      })
-    );
+    const [{ data: memberRows }, { data: messageRows }] = await Promise.all([
+      supabase
+        .from("conversation_members")
+        .select("conversation_id")
+        .in("conversation_id", convoIds),
+      supabase
+        .from("messages")
+        .select("conversation_id")
+        .in("conversation_id", convoIds),
+    ]);
+
+    const memberCounts = new Map<string, number>();
+    for (const row of memberRows ?? []) {
+      memberCounts.set(row.conversation_id, (memberCounts.get(row.conversation_id) || 0) + 1);
+    }
+
+    const messageCounts = new Map<string, number>();
+    for (const row of messageRows ?? []) {
+      messageCounts.set(row.conversation_id, (messageCounts.get(row.conversation_id) || 0) + 1);
+    }
+
+    const enriched: Channel[] = convos.map((c) => ({
+      ...c,
+      member_count: memberCounts.get(c.id) ?? 0,
+      message_count: messageCounts.get(c.id) ?? 0,
+    }));
 
     setChannels(enriched);
     setLoading(false);
@@ -85,7 +92,7 @@ export default function AdminChannelsPage() {
 
   useEffect(() => {
     loadChannels();
-  }, []);
+  }, [loadChannels]);
 
   const filteredChannels = channels.filter((c) => {
     if (!search.trim()) return true;

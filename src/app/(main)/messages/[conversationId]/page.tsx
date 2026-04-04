@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -11,50 +10,12 @@ import {
   decrypt,
 } from "@/lib/crypto";
 import type { Json } from "@/lib/supabase/types";
-
-type Reactions = Record<string, string[]>; // emoji -> profileId[]
-type Attachment = { name: string; url: string; type: string; size: number };
-
-type Message = {
-  id: string;
-  sender_id: string;
-  plaintext: string | null;
-  ciphertext: string | null;
-  message_type: string;
-  reply_to_id: string | null;
-  reactions: Json;
-  attachments: Json;
-  edited_at: string | null;
-  expires_at: string | null;
-  created_at: string;
-  profiles?: { display_name: string } | null;
-};
-
-type MemberProfile = {
-  profile_id: string;
-  display_name: string;
-  last_seen_at: string | null;
-  last_read_at: string | null;
-};
-
-const REACTION_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🎉"];
-
-function isOnline(lastSeen: string | null): boolean {
-  if (!lastSeen) return false;
-  return Date.now() - new Date(lastSeen).getTime() < 5 * 60 * 1000;
-}
-
-function formatLastSeen(lastSeen: string | null): string {
-  if (!lastSeen) return "Offline";
-  if (isOnline(lastSeen)) return "Online";
-  const d = new Date(lastSeen);
-  const diffMs = Date.now() - d.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 60) return `Last seen ${diffMins}m ago`;
-  const diffHrs = Math.floor(diffMins / 60);
-  if (diffHrs < 24) return `Last seen ${diffHrs}h ago`;
-  return `Last seen ${d.toLocaleDateString()}`;
-}
+import type { Message, Reactions, MemberProfile } from "@/components/messages/types";
+import ConversationHeader from "@/components/messages/ConversationHeader";
+import MessageSearch from "@/components/messages/MessageSearch";
+import MessageBubble from "@/components/messages/MessageBubble";
+import MessageInput from "@/components/messages/MessageInput";
+import ReportModal from "@/components/messages/ReportModal";
 
 export default function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -105,11 +66,20 @@ export default function ConversationPage() {
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // File upload
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
   // Sender name cache
   const [senderNames, setSenderNames] = useState<Record<string, string>>({});
+
+  // Report message
+  const [reportingMsg, setReportingMsg] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("");
+
+  // Block user
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+
+  // File upload error state
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Decrypt all encrypted messages whenever messages or key change
   const decryptMessages = useCallback(
@@ -330,7 +300,6 @@ export default function ConversationPage() {
     setShowScrollBottom(!atBottom);
     if (atBottom) {
       setNewMsgIndicator(false);
-      // Mark as read when scrolling to bottom
       if (profileId) {
         supabase.from("conversation_members")
           .update({ last_read_at: new Date().toISOString() })
@@ -409,7 +378,6 @@ export default function ConversationPage() {
     }
 
     if (insertError) {
-      // Rate limit or other DB error
       const msg = insertError.message.includes("Rate limit")
         ? "You're sending messages too fast. Please wait a moment."
         : insertError.message;
@@ -418,7 +386,6 @@ export default function ConversationPage() {
       return;
     }
 
-    // Update conversation last_message info
     await supabase.from("conversations").update({
       last_message_preview: isEncrypted ? "[Encrypted]" : newMsg.trim().substring(0, 100),
       last_message_at: new Date().toISOString(),
@@ -473,10 +440,6 @@ export default function ConversationPage() {
     router.push("/messages");
   }
 
-  // Report message
-  const [reportingMsg, setReportingMsg] = useState<string | null>(null);
-  const [reportReason, setReportReason] = useState("");
-
   async function reportMessage(msgId: string) {
     if (!profileId || !reportReason.trim()) return;
     await supabase
@@ -491,9 +454,6 @@ export default function ConversationPage() {
     setReportReason("");
     showToast("Message reported. Our team will review it. Thank you.");
   }
-
-  // Block user
-  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
 
   async function blockUser(targetId: string) {
     if (!profileId || targetId === profileId) return;
@@ -514,16 +474,12 @@ export default function ConversationPage() {
     setBlockedIds(prev => new Set([...prev, targetId]));
   }
 
-  // File upload error state
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !profileId) return;
 
     if (file.size > 10 * 1024 * 1024) {
       setUploadError("File too large. Maximum size is 10MB.");
-      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setUploadError(null);
@@ -532,12 +488,12 @@ export default function ConversationPage() {
     const fileExt = file.name.split(".").pop();
     const filePath = `messages/${conversationId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadErr } = await supabase.storage
       .from("attachments")
       .upload(filePath, file);
 
-    if (uploadError) {
-      console.error("Upload failed:", uploadError);
+    if (uploadErr) {
+      console.error("Upload failed:", uploadErr);
       setUploading(false);
       return;
     }
@@ -546,7 +502,7 @@ export default function ConversationPage() {
       .from("attachments")
       .getPublicUrl(filePath);
 
-    const attachment: Attachment = {
+    const attachment = {
       name: file.name,
       url: urlData.publicUrl,
       type: file.type,
@@ -570,7 +526,6 @@ export default function ConversationPage() {
     }).eq("id", conversationId);
 
     setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSearch(q: string) {
@@ -634,10 +589,6 @@ export default function ConversationPage() {
     return diff < 3 * 60 * 1000;
   }
 
-  // DM partner info
-  const dmPartner = convoType === "dm" ? members.find(m => m.profile_id !== profileId) : null;
-  const onlineCount = members.filter(m => isOnline(m.last_seen_at)).length;
-
   // Find the current user's last message ID for read receipts
   const myLastMessageId = profileId
     ? [...messages].reverse().find(m => m.sender_id === profileId && !blockedIds.has(m.sender_id))?.id ?? null
@@ -658,45 +609,16 @@ export default function ConversationPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-theme(spacing.14)-theme(spacing.8))] md:h-[calc(100vh-theme(spacing.12))] max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 pb-3 border-b border-navy-700">
-        <Link href="/messages" className="text-slate-400 hover:text-slate-300 text-sm shrink-0" aria-label="Back to messages">&larr;</Link>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="font-semibold text-slate-100 capitalize truncate">{convoName}</h1>
-            {isEncrypted && (
-              <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-teal-500/15 text-teal-400 border border-teal-500/25 shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-2.5 h-2.5">
-                  <path fillRule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z" clipRule="evenodd" />
-                </svg>
-                E2E
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] text-slate-500">
-            {convoType === "dm" && dmPartner
-              ? formatLastSeen(dmPartner.last_seen_at)
-              : `${members.length} members, ${onlineCount} online`}
-          </p>
-        </div>
-        {convoType && convoType !== "dm" && (
-          <button
-            onClick={leaveConversation}
-            className="px-2.5 py-1.5 text-xs text-red-400/80 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded transition-colors shrink-0"
-            title="Leave conversation"
-          >
-            Leave
-          </button>
-        )}
-        <button
-          onClick={() => setSearchOpen(!searchOpen)}
-          className="p-2 text-slate-400 hover:text-slate-300 rounded hover:bg-navy-800 transition-colors shrink-0"
-          aria-label="Search messages"
-        >
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-          </svg>
-        </button>
-      </div>
+      <ConversationHeader
+        name={convoName}
+        type={convoType}
+        description={convoDescription}
+        isEncrypted={isEncrypted}
+        members={members}
+        profileId={profileId}
+        onLeave={leaveConversation}
+        onToggleSearch={() => setSearchOpen(!searchOpen)}
+      />
 
       {/* E2E encryption notice */}
       {isEncrypted && (
@@ -706,28 +628,15 @@ export default function ConversationPage() {
       )}
 
       {/* Search panel */}
-      {searchOpen && (
-        <div className="border-b border-navy-700 p-3 bg-navy-900/50">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search in conversation..."
-            className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none"
-            autoFocus
-          />
-          {searchResults.length > 0 && (
-            <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
-              {searchResults.map(r => (
-                <button key={r.id} onClick={() => scrollToMessage(r.id)}
-                  className="block w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-navy-800 rounded truncate">
-                  <span className="text-teal-400">{getSenderName(r.sender_id)}</span>: {r.plaintext}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <MessageSearch
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSearch={handleSearch}
+        results={searchResults}
+        onSelectResult={scrollToMessage}
+        searchQuery={searchQuery}
+        getSenderName={getSenderName}
+      />
 
       {/* Typing indicator */}
       {typingUsers.length > 0 && (
@@ -748,211 +657,36 @@ export default function ConversationPage() {
           <p className="text-center text-slate-500 text-sm py-8">No messages yet. Say something!</p>
         )}
         {messages.filter(msg => !blockedIds.has(msg.sender_id) && !(msg.expires_at && new Date(msg.expires_at) < new Date())).map((msg, idx) => {
-          const isMine = msg.sender_id === profileId;
-          const isMyLastMsg = isMine && msg.id === myLastMessageId;
+          const isMyLastMsg = msg.sender_id === profileId && msg.id === myLastMessageId;
           const grouped = shouldGroup(msg, messages[idx - 1] || null);
-          const reactions: Reactions = (msg.reactions as Reactions) || {};
-          const attachments: Attachment[] = (msg.attachments as Attachment[]) || [];
           const replyMsg = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null;
           const readByNames = isMyLastMsg ? getReadByNames(msg.created_at) : [];
 
           return (
-            <div
+            <MessageBubble
               key={msg.id}
-              id={`msg-${msg.id}`}
-              className={`group flex ${isMine ? "justify-end" : "justify-start"} ${grouped ? "mt-0.5" : "mt-3"} transition-all`}
-            >
-              <div className={`max-w-[75%] ${grouped ? "" : ""}`}>
-                {/* Reply quote */}
-                {replyMsg && (
-                  <button
-                    onClick={() => scrollToMessage(replyMsg.id)}
-                    className="flex items-center gap-1.5 mb-1 px-2.5 py-1 text-[11px] text-slate-400 bg-navy-800/50 border-l-2 border-teal-500/40 rounded-r cursor-pointer hover:text-slate-300"
-                  >
-                    <span className="text-teal-400 font-medium">{getSenderName(replyMsg.sender_id)}</span>
-                    <span className="truncate">{displayText(replyMsg)}</span>
-                  </button>
-                )}
-
-                <div className={`rounded-lg px-3 py-2 ${
-                  isMine ? "bg-teal-500/20 border border-teal-500/30" : "bg-navy-800 border border-navy-700"
-                }`}>
-                  {!isMine && !grouped && (
-                    <p className="text-xs text-teal-400 mb-0.5 font-medium">
-                      {getSenderName(msg.sender_id)}
-                    </p>
-                  )}
-
-                  {/* Attachments */}
-                  {attachments.length > 0 && (
-                    <div className="mb-1.5">
-                      {attachments.map((att, i) => (
-                        att.type.startsWith("image/") ? (
-                          <a key={i} href={att.url} target="_blank" rel="noopener noreferrer" className="block">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={att.url} alt={att.name} className="max-w-full max-h-64 rounded" />
-                          </a>
-                        ) : (
-                          <a key={i} href={att.url} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-2.5 py-1.5 bg-navy-900/50 rounded text-xs text-teal-400 hover:text-teal-300">
-                            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clipRule="evenodd" />
-                            </svg>
-                            {att.name}
-                            <span className="text-slate-500">({Math.round(att.size / 1024)}KB)</span>
-                          </a>
-                        )
-                      ))}
-                    </div>
-                  )}
-
-                  {msg.message_type !== "image" && (
-                    <p className="text-sm text-slate-200 whitespace-pre-wrap break-words">{linkify(displayText(msg))}</p>
-                  )}
-
-                  {!grouped && (
-                    <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      {msg.edited_at && (
-                        <span className="ml-1 text-slate-500/70 italic" title={`Edited ${new Date(msg.edited_at).toLocaleString()}`}>(edited)</span>
-                      )}
-                      {msg.expires_at && (
-                        <span className="inline-flex items-center gap-0.5 ml-1 text-amber-400/70" title={`Expires ${new Date(msg.expires_at).toLocaleString()}`}>
-                          <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                          </svg>
-                        </span>
-                      )}
-                    </p>
-                  )}
-                </div>
-
-                {/* Reactions display */}
-                {Object.keys(reactions).length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {Object.entries(reactions).map(([emoji, users]) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleReaction(msg.id, emoji)}
-                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
-                          users.includes(profileId || "")
-                            ? "bg-teal-500/15 border-teal-500/30 text-teal-400"
-                            : "bg-navy-800 border-navy-700 text-slate-400 hover:border-navy-600"
-                        }`}
-                      >
-                        <span>{emoji}</span>
-                        <span className="text-[10px]">{users.length}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Action buttons on hover */}
-                <div className={`hidden group-hover:flex items-center gap-1 mt-0.5 ${isMine ? "justify-end" : "justify-start"}`}>
-                  <button
-                    onClick={() => setReplyTo(msg)}
-                    className="p-1 text-slate-500 hover:text-slate-300 rounded hover:bg-navy-800 transition-colors"
-                    title="Reply"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowReactionsFor(showReactionsFor === msg.id ? null : msg.id)}
-                      className="p-1 text-slate-500 hover:text-slate-300 rounded hover:bg-navy-800 transition-colors"
-                      title="React"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a1 1 0 10-1.415-1.414 3 3 0 01-4.242 0 1 1 0 00-1.415 1.414 5 5 0 007.072 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    {showReactionsFor === msg.id && (
-                      <div className={`absolute bottom-full mb-1 flex gap-1 p-1.5 bg-navy-800 border border-navy-600 rounded-lg shadow-lg z-10 ${isMine ? "right-0" : "left-0"}`}>
-                        {REACTION_OPTIONS.map(emoji => (
-                          <button
-                            key={emoji}
-                            onClick={() => handleReaction(msg.id, emoji)}
-                            className="w-7 h-7 flex items-center justify-center hover:bg-navy-700 rounded text-sm transition-colors"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {isMine ? (
-                    <>
-                      {msg.message_type === "text" && (
-                        <button
-                          onClick={() => startEdit(msg)}
-                          className="p-1 text-slate-500 hover:text-teal-400 rounded hover:bg-navy-800 transition-colors"
-                          title="Edit"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                          </svg>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteMessage(msg.id)}
-                        className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-navy-800 transition-colors"
-                        title="Delete"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => setReportingMsg(msg.id)}
-                        className="p-1 text-slate-500 hover:text-amber-400 rounded hover:bg-navy-800 transition-colors"
-                        title="Report"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => blockUser(msg.sender_id)}
-                        className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-navy-800 transition-colors"
-                        title="Block user"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                      {isAdmin && (
-                        <button
-                          onClick={() => deleteMessage(msg.id, true)}
-                          className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-navy-800 transition-colors"
-                          title="Delete (Admin)"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Read receipts — only on the current user's last message */}
-                {isMyLastMsg && readByNames.length > 0 && (
-                  <div className="flex items-center gap-1 mt-1 justify-end">
-                    <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor" className="text-teal-400 shrink-0">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-[10px] text-slate-500">
-                      Read by {readByNames.join(", ")}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+              message={msg}
+              profileId={profileId}
+              isAdmin={isAdmin}
+              senderName={getSenderName(msg.sender_id)}
+              isGrouped={grouped}
+              blockedIds={blockedIds}
+              onReply={setReplyTo}
+              onReact={handleReaction}
+              onDelete={deleteMessage}
+              onEdit={startEdit}
+              onReport={(msgId) => setReportingMsg(msgId)}
+              onBlock={blockUser}
+              displayText={displayText}
+              linkify={linkify}
+              getSenderName={getSenderName}
+              scrollToMessage={scrollToMessage}
+              replyMsg={replyMsg ?? null}
+              isMyLastMsg={isMyLastMsg}
+              readByNames={readByNames}
+              showReactionsFor={showReactionsFor}
+              setShowReactionsFor={setShowReactionsFor}
+            />
           );
         })}
         <div ref={bottomRef} />
@@ -977,106 +711,34 @@ export default function ConversationPage() {
         </div>
       )}
 
-      {/* Reply banner */}
-      {replyTo && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-navy-800 border-t border-navy-700 text-xs">
-          <div className="flex-1 min-w-0 border-l-2 border-teal-500/40 pl-2">
-            <span className="text-teal-400 font-medium">{getSenderName(replyTo.sender_id)}</span>
-            <p className="text-slate-400 truncate">{displayText(replyTo)}</p>
-          </div>
-          <button onClick={() => setReplyTo(null)} className="text-slate-500 hover:text-red-400 shrink-0" aria-label="Cancel reply">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Editing banner */}
-      {editingMsg && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-navy-900 border-t border-teal-500/30 text-xs">
-          <div className="flex-1 min-w-0 border-l-2 border-teal-500 pl-2">
-            <span className="text-teal-400 font-medium">Editing message</span>
-            <p className="text-slate-400 truncate">{displayText(editingMsg)}</p>
-          </div>
-          <button onClick={cancelEdit} className="text-slate-500 hover:text-red-400 shrink-0" aria-label="Cancel edit">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Upload error */}
-      {uploadError && (
-        <div className="flex items-center justify-between px-3 py-1.5 text-xs text-red-400 bg-red-500/10 border-t border-red-500/20">
-          <span>{uploadError}</span>
-          <button onClick={() => setUploadError(null)} className="text-red-400/60 hover:text-red-400 ml-2" aria-label="Dismiss">&times;</button>
-        </div>
-      )}
-
       {/* Report modal */}
-      {reportingMsg && (
-        <div className="bg-navy-800 border border-navy-600 rounded-lg p-4 mb-3">
-          <h4 className="text-sm font-semibold text-slate-200 mb-2">Report Message</h4>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {["Spam", "Harassment", "Misinformation", "Inappropriate", "Other"].map(r => (
-              <button key={r} onClick={() => setReportReason(r)}
-                className={`px-3 py-1 text-xs rounded border ${reportReason === r ? "bg-red-500/20 text-red-400 border-red-500/30" : "bg-navy-900 text-slate-400 border-navy-600"}`}>
-                {r}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => reportMessage(reportingMsg)} disabled={!reportReason}
-              className="px-4 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-40 text-xs font-medium rounded transition-colors">
-              Submit Report
-            </button>
-            <button onClick={() => { setReportingMsg(null); setReportReason(""); }}
-              className="px-4 py-1.5 bg-navy-900 text-slate-400 hover:text-slate-200 text-xs rounded transition-colors">
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <ReportModal
+        isOpen={!!reportingMsg}
+        onClose={() => { setReportingMsg(null); setReportReason(""); }}
+        onSubmit={() => reportingMsg && reportMessage(reportingMsg)}
+        reason={reportReason}
+        onReasonChange={setReportReason}
+      />
 
-      {/* Input */}
-      <form onSubmit={sendMessage} className="flex gap-2 pt-3 border-t border-navy-700">
-        <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="px-2.5 py-2.5 text-slate-400 hover:text-slate-300 hover:bg-navy-800 rounded transition-colors disabled:opacity-50 shrink-0"
-          aria-label="Attach file"
-        >
-          {uploading ? (
-            <svg width="18" height="18" className="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.48-8.48l2.83-2.83M2 12h4m12 0h4m-3.93 7.07l-2.83-2.83M6.34 6.34L3.51 3.51" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clipRule="evenodd" />
-            </svg>
-          )}
-        </button>
-        <input
-          type="text"
-          value={newMsg}
-          onChange={(e) => { setNewMsg(e.target.value); handleTyping(); }}
-          placeholder={editingMsg ? "Edit your message..." : isEncrypted ? "Type an encrypted message..." : "Type a message..."}
-          aria-label={editingMsg ? "Edit message text" : "Message text"}
-          className={`flex-1 px-3 py-2.5 bg-navy-800 border rounded text-slate-100 placeholder:text-slate-500 text-sm focus:outline-none ${
-            editingMsg ? "border-teal-500/50 focus:border-teal-500" : "border-navy-600 focus:border-teal-500"
-          }`}
-          onKeyDown={(e) => { if (e.key === "Escape" && editingMsg) cancelEdit(); }}
-        />
-        <button type="submit" disabled={sending || !newMsg.trim()}
-          aria-label={editingMsg ? "Save edit" : "Send message"}
-          className="px-4 py-2.5 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors shrink-0">
-          {editingMsg ? "Save" : "Send"}
-        </button>
-      </form>
+      {/* Message input area */}
+      <MessageInput
+        value={newMsg}
+        onChange={setNewMsg}
+        onSubmit={sendMessage}
+        onFileUpload={handleFileUpload}
+        replyTo={replyTo}
+        editingMsg={editingMsg}
+        onCancelReply={() => setReplyTo(null)}
+        onCancelEdit={cancelEdit}
+        sending={sending}
+        uploading={uploading}
+        isEncrypted={isEncrypted}
+        onTyping={handleTyping}
+        uploadError={uploadError}
+        onDismissUploadError={() => setUploadError(null)}
+        displayText={displayText}
+        getSenderName={getSenderName}
+      />
     </div>
   );
 }

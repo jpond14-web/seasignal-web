@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables, Enums } from "@/lib/supabase/types";
@@ -261,9 +262,11 @@ export default function SeafarerProfilePage() {
           <div className="relative shrink-0">
             <div className="w-20 h-20 rounded-full bg-navy-700 flex items-center justify-center text-3xl font-bold text-teal-400">
               {profile.avatar_url ? (
-                <img
+                <Image
                   src={profile.avatar_url}
                   alt=""
+                  width={80}
+                  height={80}
                   className="w-20 h-20 rounded-full object-cover"
                 />
               ) : (

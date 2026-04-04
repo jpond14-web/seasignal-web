@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { copyProfileLink, copyInviteLink } from "@/lib/utils/shareProfile";
@@ -251,9 +252,11 @@ export default function FindCrewPage() {
               <div className="flex items-start gap-3">
                 <div className="w-12 h-12 rounded-full bg-navy-700 flex items-center justify-center text-lg font-bold text-teal-400 shrink-0">
                   {member.avatar_url ? (
-                    <img
+                    <Image
                       src={member.avatar_url}
                       alt={member.display_name}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 rounded-full object-cover"
                     />
                   ) : (

@@ -143,23 +143,32 @@ export default function AdminDashboardPage() {
       items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setActivity(items.slice(0, 20));
 
-      // Fetch search analytics
+      // Fetch search analytics — use small targeted queries instead of fetching 1000 rows
       const now = new Date();
       const d24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
       const d7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const d30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
       const [
-        { data: allSearches },
+        { data: topTermRows },
+        { data: typeRows },
         { count: count24h },
         { count: count7d },
         { count: count30d },
       ] = await Promise.all([
+        // Fetch only recent queries (last 30 days) for top-term aggregation — much smaller than 1000 arbitrary rows
         supabase
           .from("search_analytics")
-          .select("search_type, search_query")
+          .select("search_query")
+          .gte("created_at", d30d)
           .order("created_at", { ascending: false })
-          .limit(1000),
+          .limit(200),
+        supabase
+          .from("search_analytics")
+          .select("search_type")
+          .gte("created_at", d30d)
+          .order("created_at", { ascending: false })
+          .limit(200),
         supabase
           .from("search_analytics")
           .select("*", { count: "exact", head: true })
@@ -174,37 +183,38 @@ export default function AdminDashboardPage() {
           .gte("created_at", d30d),
       ]);
 
-      if (allSearches) {
-        // Top terms
-        const termCounts = new Map<string, number>();
-        const typeCounts = new Map<string, number>();
-        for (const s of allSearches) {
-          const q = s.search_query.toLowerCase().trim();
-          termCounts.set(q, (termCounts.get(q) || 0) + 1);
-          typeCounts.set(s.search_type, (typeCounts.get(s.search_type) || 0) + 1);
-        }
-        const topTerms = [...termCounts.entries()]
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 10)
-          .map(([query, count]) => ({ query, count }));
-        const byType = [...typeCounts.entries()]
-          .sort((a, b) => b[1] - a[1])
-          .map(([type, count]) => ({ type, count }));
-
-        setSearchTrends({
-          topTerms,
-          byType,
-          last24h: count24h ?? 0,
-          last7d: count7d ?? 0,
-          last30d: count30d ?? 0,
-        });
+      // Aggregate top terms client-side from the bounded dataset
+      const termCounts = new Map<string, number>();
+      for (const s of topTermRows ?? []) {
+        const q = s.search_query.toLowerCase().trim();
+        termCounts.set(q, (termCounts.get(q) || 0) + 1);
       }
+      const topTerms = [...termCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([query, count]) => ({ query, count }));
+
+      const typeCounts = new Map<string, number>();
+      for (const s of typeRows ?? []) {
+        typeCounts.set(s.search_type, (typeCounts.get(s.search_type) || 0) + 1);
+      }
+      const byType = [...typeCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([type, count]) => ({ type, count }));
+
+      setSearchTrends({
+        topTerms,
+        byType,
+        last24h: count24h ?? 0,
+        last7d: count7d ?? 0,
+        last30d: count30d ?? 0,
+      });
 
       setLoading(false);
     }
 
     load();
-  }, []);
+  }, [supabase]);
 
   const statCards = stats
     ? [
