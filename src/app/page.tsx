@@ -1,4 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "SeaSignal — The Professional Network for Seafarers",
+  description:
+    "Privacy-first platform connecting maritime professionals worldwide. Secure messaging, certificate tracking, pay transparency, and crew finder — built by seafarers, for seafarers.",
+};
 
 /* ──────────────────────────── SVG Icons ──────────────────────────── */
 
@@ -46,6 +53,14 @@ function ScaleIcon() {
   return (
     <svg className="w-8 h-8 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg className="w-8 h-8 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
     </svg>
   );
 }
@@ -131,25 +146,25 @@ export default function LandingPage() {
           </div>
 
           <h1 className="relative text-4xl md:text-5xl lg:text-6xl font-bold text-slate-100 max-w-3xl leading-tight">
-            Connect. Protect.{" "}
-            <span className="text-teal-400">Know your worth.</span>
+            SeaSignal &mdash; The Professional Network{" "}
+            <span className="text-teal-400">for Seafarers</span>
           </h1>
           <p className="relative text-slate-400 mt-5 max-w-xl text-lg leading-relaxed">
-            The private community where seafarers share intel, track pay, and protect each other.
+            Privacy-first platform connecting maritime professionals worldwide. Share intel, track pay, and protect each other.
           </p>
           <div className="relative flex flex-col sm:flex-row gap-3 mt-8">
             <Link
               href="/signup"
               className="px-6 py-3 bg-teal-500 hover:bg-teal-400 text-navy-950 font-semibold rounded-lg text-base transition-colors"
             >
-              Create Free Account
+              Get Started
             </Link>
-            <Link
-              href="/companies"
+            <a
+              href="#features"
               className="px-6 py-3 bg-navy-800 border border-navy-600 hover:border-navy-500 text-slate-200 rounded-lg text-base transition-colors"
             >
-              Browse Companies
-            </Link>
+              Learn More
+            </a>
           </div>
 
           {/* Stats bar */}
@@ -174,7 +189,10 @@ export default function LandingPage() {
         </section>
 
         {/* Feature grid */}
-        <section className="w-full max-w-5xl mx-auto px-6 py-16">
+        <section id="features" className="w-full max-w-5xl mx-auto px-6 py-16">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-100 text-center mb-10">
+            Everything you need at sea &mdash; and ashore
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <FeatureCard
               icon={<BuildingIcon />}
@@ -203,9 +221,54 @@ export default function LandingPage() {
             />
             <FeatureCard
               icon={<ScaleIcon />}
-              title="Know Your Rights"
-              description="MLC 2006 guide, emergency contacts, and a Contract Check assessment tool."
+              title="Contract Check"
+              description="Verify fair terms against MLC 2006 standards. Know your rights before you sign."
             />
+            <FeatureCard
+              icon={<UsersIcon />}
+              title="Crew Finder"
+              description="Reconnect with former crewmates and find trusted colleagues for your next voyage."
+            />
+          </div>
+        </section>
+
+        {/* How It Works */}
+        <section className="w-full bg-navy-900/30 border-t border-b border-navy-800">
+          <div className="max-w-4xl mx-auto px-6 py-16 text-center">
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-100 mb-12">
+              Get started in three steps
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 text-xl font-bold">
+                  1
+                </div>
+                <h3 className="font-semibold text-slate-100">Create your profile</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">Sign up in under a minute. Your data stays private &mdash; no employer access, ever.</p>
+              </div>
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 text-xl font-bold">
+                  2
+                </div>
+                <h3 className="font-semibold text-slate-100">Verify your credentials</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">Upload certificates, track expiry dates, and build a trusted professional profile.</p>
+              </div>
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 text-xl font-bold">
+                  3
+                </div>
+                <h3 className="font-semibold text-slate-100">Connect with the community</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">Message crewmates, share pay data, review companies, and protect each other.</p>
+              </div>
+            </div>
+            <div className="mt-10">
+              <Link
+                href="/signup"
+                className="inline-block px-8 py-3 bg-teal-500 hover:bg-teal-400 text-navy-950 font-semibold rounded-lg text-base transition-colors"
+              >
+                Create Free Account
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -284,8 +347,10 @@ export default function LandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-slate-300 mb-3">Legal</h4>
               <ul className="space-y-2 text-sm text-slate-500">
+                <li><Link href="/about" className="hover:text-slate-300 transition-colors">About</Link></li>
                 <li><Link href="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link></li>
                 <li><Link href="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</Link></li>
+                <li><Link href="/contact" className="hover:text-slate-300 transition-colors">Contact</Link></li>
               </ul>
             </div>
           </div>
@@ -293,7 +358,10 @@ export default function LandingPage() {
           {/* Bottom bar */}
           <div className="mt-10 pt-6 border-t border-navy-800 text-center">
             <p className="text-xs text-slate-600">
-              &copy; 2024 SeaSignal. All rights reserved.
+              &copy; {new Date().getFullYear()} SeaSignal. All rights reserved.
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              Built by seafarers, for seafarers.
             </p>
           </div>
         </div>

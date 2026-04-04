@@ -67,6 +67,7 @@ export default function ConversationPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [decryptedTexts, setDecryptedTexts] = useState<Record<string, string>>({});
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
@@ -135,10 +136,11 @@ export default function ConversationPage() {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: profile } = await supabase.from("profiles").select("id, display_name").eq("auth_user_id", user.id).single();
+      const { data: profile } = await supabase.from("profiles").select("id, display_name, is_verified").eq("auth_user_id", user.id).single();
       if (profile) {
         setProfileId(profile.id);
         setProfileName(profile.display_name);
+        setIsAdmin(!!profile.is_verified);
         // Update last_seen_at
         await supabase.from("profiles").update({ last_seen_at: new Date().toISOString() }).eq("id", profile.id);
       }
@@ -448,11 +450,16 @@ export default function ConversationPage() {
     loadMessages();
   }
 
-  async function deleteMessage(msgId: string) {
+  async function deleteMessage(msgId: string, adminOverride?: boolean) {
     if (!profileId) return;
-    const confirmed = window.confirm("Delete this message?");
+    const confirmText = adminOverride ? "Delete this message as admin?" : "Delete this message?";
+    const confirmed = window.confirm(confirmText);
     if (!confirmed) return;
-    await supabase.from("messages").delete().eq("id", msgId).eq("sender_id", profileId);
+    if (adminOverride && isAdmin) {
+      await supabase.from("messages").delete().eq("id", msgId);
+    } else {
+      await supabase.from("messages").delete().eq("id", msgId).eq("sender_id", profileId);
+    }
     loadMessages();
   }
 
@@ -918,6 +925,17 @@ export default function ConversationPage() {
                           <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
                         </svg>
                       </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => deleteMessage(msg.id, true)}
+                          className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-navy-800 transition-colors"
+                          title="Delete (Admin)"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
                     </>
                   )}
                 </div>

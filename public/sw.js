@@ -1,4 +1,4 @@
-const CACHE_NAME = "seasignal-v2";
+const CACHE_NAME = "seasignal-v3";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [

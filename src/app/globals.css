@@ -240,3 +240,52 @@ input::placeholder, textarea::placeholder {
 body.font-small { font-size: 14px; }
 body.font-medium { font-size: 16px; }
 body.font-large { font-size: 18px; }
+
+/* --- PWA & Mobile UX --- */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Safe area insets for notched devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Tap highlight removal and touch improvements */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Prevent text selection on interactive elements */
+nav, button, [role="button"], [role="tab"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Slide-up animation for install prompt */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-slide-up {
+  animation: slide-up 0.35s ease-out;
+}
+
+/* Overscroll behavior — prevent pull-to-refresh in standalone mode */
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: contain;
+  }
+}

@@ -16,9 +16,45 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SeaSignal",
+  title: {
+    default: "SeaSignal — Professional Network for Seafarers",
+    template: "%s | SeaSignal",
+  },
   description:
-    "Privacy-first community and professional hub for seafarers",
+    "Privacy-first platform connecting maritime professionals worldwide. Track certificates, share pay data, verify contracts, and connect with fellow seafarers — all without employer access.",
+  metadataBase: new URL("https://seasignal.app"),
+  openGraph: {
+    title: "SeaSignal — Professional Network for Seafarers",
+    description:
+      "Privacy-first platform connecting maritime professionals worldwide. Track certificates, share pay data, verify contracts, and connect with fellow seafarers.",
+    type: "website",
+    siteName: "SeaSignal",
+    locale: "en_US",
+    url: "https://seasignal.app",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SeaSignal — Professional Network for Seafarers",
+    description:
+      "Privacy-first platform connecting maritime professionals worldwide. Track certificates, share pay data, and verify contracts.",
+  },
+  alternates: {
+    canonical: "https://seasignal.app",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  keywords: [
+    "seafarer",
+    "maritime",
+    "professional network",
+    "certificate tracker",
+    "pay transparency",
+    "crew finder",
+    "contract check",
+    "MLC 2006",
+  ],
 };
 
 export default function RootLayout({
@@ -37,7 +73,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="SeaSignal" />
-        <link rel="apple-touch-icon" href="/icon.svg" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg" />
       </head>
       <body className="min-h-full bg-navy-950 text-slate-100 antialiased">
         <ToastProvider>

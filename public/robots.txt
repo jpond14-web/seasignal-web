@@ -1,0 +1,9 @@
+# SeaSignal robots.txt
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /messages/
+
+Sitemap: https://seasignal.app/sitemap.xml

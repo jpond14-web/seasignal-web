@@ -11,6 +11,7 @@ interface Stats {
   activeConversations: number;
   totalReviews: number;
   pendingVerifications: number;
+  pendingReports: number;
 }
 
 interface SearchTrends {
@@ -50,6 +51,7 @@ export default function AdminDashboardPage() {
         { count: activeConversations },
         { count: totalReviews },
         { count: pendingVerifications },
+        { count: pendingReports },
       ] = await Promise.all([
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase
@@ -63,6 +65,10 @@ export default function AdminDashboardPage() {
           .from("profiles")
           .select("*", { count: "exact", head: true })
           .eq("is_verified", false),
+        supabase
+          .from("reported_content")
+          .select("*", { count: "exact", head: true })
+          .or("status.is.null,status.eq.pending"),
       ]);
 
       setStats({
@@ -72,6 +78,7 @@ export default function AdminDashboardPage() {
         activeConversations: activeConversations ?? 0,
         totalReviews: totalReviews ?? 0,
         pendingVerifications: pendingVerifications ?? 0,
+        pendingReports: pendingReports ?? 0,
       });
 
       // Fetch recent activity
@@ -207,6 +214,8 @@ export default function AdminDashboardPage() {
         { label: "Conversations", value: stats.activeConversations, color: "text-purple-400" },
         { label: "Total Reviews", value: stats.totalReviews, color: "text-amber-400" },
         { label: "Pending Verifications", value: stats.pendingVerifications, color: "text-red-400", href: "/admin/verify" },
+        { label: "Pending Reports", value: stats.pendingReports, color: "text-orange-400", href: "/admin/reports" },
+        { label: "Channels", value: stats.activeConversations, color: "text-cyan-400", href: "/admin/channels" },
       ]
     : [];
 
