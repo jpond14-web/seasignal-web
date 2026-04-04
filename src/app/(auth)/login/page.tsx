@@ -147,6 +147,12 @@ export default function LoginPage() {
         </button>
       </div>
 
+      <p className="text-xs text-slate-500 mb-4 -mt-2">
+        {mode === "magic" && "We\u2019ll email you a one-click login link. No password needed."}
+        {mode === "password" && "Sign in with your email and password."}
+        {mode === "phone" && "We\u2019ll text you a verification code."}
+      </p>
+
       <form onSubmit={getFormHandler()}>
         <div className="space-y-4">
           {mode !== "phone" && (

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { UnreadBadge } from "./unread-badge";
 import { NotificationBell } from "./notification-bell";
@@ -55,6 +55,222 @@ const navSections: NavSection[] = [
 
 // Flat list for mobile nav
 const navItems = navSections.flatMap((s) => s.items);
+
+function UserAvatar({ avatarUrl, userInitial, size = 28 }: { avatarUrl?: string | null; userInitial: string; size?: number }) {
+  if (avatarUrl) {
+    return (
+      <Image
+        src={avatarUrl}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+        aria-hidden="true"
+      />
+    );
+  }
+  return (
+    <div
+      className="rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200 shrink-0"
+      style={{ width: size, height: size }}
+      aria-hidden="true"
+    >
+      {userInitial}
+    </div>
+  );
+}
+
+function UserPillDropdown({
+  userInitial,
+  avatarUrl,
+  collapsed,
+  onSignOut,
+}: {
+  userInitial: string;
+  avatarUrl?: string | null;
+  collapsed: boolean;
+  onSignOut: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  // Close dropdown on navigation
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  const menuItems = [
+    { href: "/profile", label: "Profile", icon: ProfileIcon },
+    { href: "/profile/edit", label: "Edit Profile", icon: EditProfileIcon },
+    { href: "/settings", label: "Settings", icon: SettingsIcon },
+    { href: "/changelog", label: "What's New", icon: ChangelogIcon },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Dropdown menu - positioned above the pill */}
+      {open && (
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-navy-800 border border-navy-700 rounded-lg shadow-xl z-50 py-1 min-w-[180px]">
+          {menuItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== "/profile/edit" && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
+                  isActive
+                    ? "text-teal-400 bg-navy-700/50"
+                    : "text-slate-300 hover:text-slate-100 hover:bg-navy-700/50"
+                }`}
+              >
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+          <div className="mx-2 my-1 border-t border-navy-600" />
+          <button
+            onClick={() => {
+              setOpen(false);
+              onSignOut();
+            }}
+            className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-red-400 hover:bg-navy-700/50 transition-colors w-full text-left"
+          >
+            <SignOutIcon className="w-4 h-4 shrink-0" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      )}
+
+      {/* User pill button */}
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-3 w-full px-2 py-2 rounded-lg transition-colors hover:bg-navy-800/50 ${
+          open ? "bg-navy-800" : ""
+        }`}
+        aria-label="User menu"
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        <UserAvatar avatarUrl={avatarUrl} userInitial={userInitial} size={28} />
+        {!collapsed && (
+          <>
+            <span className="text-sm text-slate-300 truncate flex-1 text-left">{userInitial}</span>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="currentColor"
+              className={`text-slate-500 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            >
+              <path d="M3 7.5l3-3 3 3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
+function MobileUserDropdown({
+  userInitial,
+  avatarUrl,
+  onSignOut,
+}: {
+  userInitial: string;
+  avatarUrl?: string | null;
+  onSignOut: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  const menuItems = [
+    { href: "/profile", label: "Profile", icon: ProfileIcon },
+    { href: "/profile/edit", label: "Edit Profile", icon: EditProfileIcon },
+    { href: "/settings", label: "Settings", icon: SettingsIcon },
+    { href: "/changelog", label: "What's New", icon: ChangelogIcon },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-slate-400 hover:text-slate-100 p-1"
+        aria-label="User menu"
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        <UserAvatar avatarUrl={avatarUrl} userInitial={userInitial} size={24} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 bg-navy-800 border border-navy-700 rounded-lg shadow-xl z-50 py-1 min-w-[180px]">
+          {menuItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== "/profile/edit" && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${
+                  isActive
+                    ? "text-teal-400 bg-navy-700/50"
+                    : "text-slate-300 hover:text-slate-100 hover:bg-navy-700/50"
+                }`}
+              >
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+          <div className="mx-2 my-1 border-t border-navy-600" />
+          <button
+            onClick={() => {
+              setOpen(false);
+              onSignOut();
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm text-slate-300 hover:text-red-400 hover:bg-navy-700/50 transition-colors w-full text-left"
+          >
+            <SignOutIcon className="w-4 h-4 shrink-0" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Sidebar({ userInitial = "U", isAdmin = false, avatarUrl }: { userInitial?: string; isAdmin?: boolean; avatarUrl?: string | null }) {
   const pathname = usePathname();
@@ -149,60 +365,12 @@ export function Sidebar({ userInitial = "U", isAdmin = false, avatarUrl }: { use
             {!collapsed && <span>Admin</span>}
           </Link>
         )}
-        <Link
-          href="/settings"
-          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
-            pathname.startsWith("/settings")
-              ? "text-teal-400 bg-navy-800"
-              : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
-          }`}
-          title={collapsed ? "Settings" : undefined}
-          aria-label="Settings"
-        >
-          <SettingsIcon className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>Settings</span>}
-        </Link>
-        <Link
-          href="/changelog"
-          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
-            pathname.startsWith("/changelog")
-              ? "text-teal-400 bg-navy-800"
-              : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
-          }`}
-          title={collapsed ? "What's New" : undefined}
-          aria-label="What's New"
-        >
-          <ChangelogIcon className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>What&apos;s New</span>}
-        </Link>
-        <Link
-          href="/profile"
-          className={`flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
-            pathname.startsWith("/profile")
-              ? "text-teal-400 bg-navy-800"
-              : "text-slate-400 hover:text-slate-100 hover:bg-navy-800/50"
-          }`}
-          title={collapsed ? "Profile" : undefined}
-          aria-label="Profile"
-        >
-          {avatarUrl ? (
-            <Image src={avatarUrl} alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" aria-hidden="true" />
-          ) : (
-            <div className="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200 shrink-0" aria-hidden="true">
-              {userInitial}
-            </div>
-          )}
-          {!collapsed && <span className="truncate">Profile</span>}
-        </Link>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-3 px-2 py-2 text-sm text-slate-400 hover:text-red-400 hover:bg-navy-800/50 rounded transition-colors w-full text-left focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset"
-          title={collapsed ? "Sign Out" : undefined}
-          aria-label="Sign out"
-        >
-          <SignOutIcon className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>Sign Out</span>}
-        </button>
+        <UserPillDropdown
+          userInitial={userInitial}
+          avatarUrl={avatarUrl}
+          collapsed={collapsed}
+          onSignOut={handleSignOut}
+        />
       </div>
     </aside>
   );
@@ -230,6 +398,11 @@ export function MobileNav({ userInitial = "U", isAdmin = false, avatarUrl }: { u
         <div className="flex items-center gap-2">
           <SearchTrigger />
           <NotificationBell />
+          <MobileUserDropdown
+            userInitial={userInitial}
+            avatarUrl={avatarUrl}
+            onSignOut={handleSignOut}
+          />
           <button
             onClick={() => setOpen(!open)}
             className="text-slate-400 hover:text-slate-100"
@@ -267,73 +440,23 @@ export function MobileNav({ userInitial = "U", isAdmin = false, avatarUrl }: { u
                 </Link>
               );
             })}
-            <hr className="border-navy-700 my-2" />
             {isAdmin && (
-              <Link
-                href="/admin"
-                onClick={() => setOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  pathname.startsWith("/admin")
-                    ? "text-teal-400 bg-navy-800"
-                    : "text-slate-300 hover:bg-navy-800/50"
-                }`}
-              >
-                <AdminIcon className="w-5 h-5" />
-                <span>Admin</span>
-              </Link>
+              <>
+                <hr className="border-navy-700 my-2" />
+                <Link
+                  href="/admin"
+                  onClick={() => setOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    pathname.startsWith("/admin")
+                      ? "text-teal-400 bg-navy-800"
+                      : "text-slate-300 hover:bg-navy-800/50"
+                  }`}
+                >
+                  <AdminIcon className="w-5 h-5" />
+                  <span>Admin</span>
+                </Link>
+              </>
             )}
-            <Link
-              href="/settings"
-              onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                pathname.startsWith("/settings")
-                  ? "text-teal-400 bg-navy-800"
-                  : "text-slate-300 hover:bg-navy-800/50"
-              }`}
-            >
-              <SettingsIcon className="w-5 h-5" />
-              <span>Settings</span>
-            </Link>
-            <Link
-              href="/changelog"
-              onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                pathname.startsWith("/changelog")
-                  ? "text-teal-400 bg-navy-800"
-                  : "text-slate-300 hover:bg-navy-800/50"
-              }`}
-            >
-              <ChangelogIcon className="w-5 h-5" />
-              <span>What&apos;s New</span>
-            </Link>
-            <Link
-              href="/profile"
-              onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                pathname.startsWith("/profile")
-                  ? "text-teal-400 bg-navy-800"
-                  : "text-slate-300 hover:bg-navy-800/50"
-              }`}
-            >
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt="" width={24} height={24} className="w-6 h-6 rounded-full object-cover" />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-navy-600 flex items-center justify-center text-xs font-medium text-slate-200">
-                  {userInitial}
-                </div>
-              )}
-              <span>Profile</span>
-            </Link>
-            <button
-              onClick={() => {
-                setOpen(false);
-                handleSignOut();
-              }}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-red-400 hover:bg-navy-800/50 transition-colors w-full text-left"
-            >
-              <SignOutIcon className="w-5 h-5" />
-              <span>Sign Out</span>
-            </button>
           </nav>
         </div>
       )}
@@ -496,6 +619,22 @@ function ChangelogIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 20 20" fill="currentColor">
       <path d="M5 2a1 1 0 00-1 1v1h12V3a1 1 0 00-1-1H5z" />
       <path fillRule="evenodd" d="M4 6v11a2 2 0 002 2h8a2 2 0 002-2V6H4zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function ProfileIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function EditProfileIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
     </svg>
   );
 }

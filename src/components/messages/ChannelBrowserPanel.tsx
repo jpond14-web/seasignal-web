@@ -1,10 +1,47 @@
 "use client";
 
+import { useMemo } from "react";
 import type { ConversationWithMeta, ConversationType } from "./types";
 
 function formatType(t: string) {
   return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/** Region grouping based on context_port codes used in seeded data */
+const REGION_MAP: Record<string, string> = {
+  APAC: "Asia-Pacific",
+  EUR: "Europe",
+  AMR: "Americas",
+  MEA: "Middle East & Africa",
+  PH: "Asia-Pacific",
+  IN: "Asia-Pacific",
+  ID: "Asia-Pacific",
+  CN: "Asia-Pacific",
+  JP: "Asia-Pacific",
+  KR: "Asia-Pacific",
+  GR: "Europe",
+  NO: "Europe",
+  GB: "Europe",
+  HR: "Europe",
+  UA: "Europe",
+  TR: "Europe",
+  RU: "Europe",
+  US: "Americas",
+  CA: "Americas",
+};
+
+function getChannelGroup(ch: ConversationWithMeta): string {
+  const isSystem = (ch as Record<string, unknown>).is_system;
+  // Global official channels (no context_port or not in region map)
+  if (isSystem && !ch.context_port) return "Global";
+  // Regional channels
+  if (ch.context_port && REGION_MAP[ch.context_port]) return REGION_MAP[ch.context_port];
+  // Port channels with known port names
+  if (ch.type === "port_channel" && ch.context_port) return "Ports";
+  return "Other";
+}
+
+const GROUP_ORDER = ["Global", "Asia-Pacific", "Europe", "Americas", "Middle East & Africa", "Ports", "Other"];
 
 type ChannelBrowserPanelProps = {
   newChannelName: string;
@@ -39,6 +76,28 @@ export default function ChannelBrowserPanel({
   onChannelSearchChange,
   onJoinChannel,
 }: ChannelBrowserPanelProps) {
+  const filtered = useMemo(() => {
+    if (!channelSearch.trim()) return unjoinedChannels;
+    const q = channelSearch.toLowerCase();
+    return unjoinedChannels.filter(ch => {
+      const name = ch.name || "";
+      const desc = ch.description || "";
+      return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
+    });
+  }, [unjoinedChannels, channelSearch]);
+
+  const grouped = useMemo(() => {
+    const groups: Record<string, ConversationWithMeta[]> = {};
+    for (const ch of filtered) {
+      const group = getChannelGroup(ch);
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(ch);
+    }
+    return GROUP_ORDER
+      .filter(g => groups[g] && groups[g].length > 0)
+      .map(g => ({ label: g, channels: groups[g] }));
+  }, [filtered]);
+
   return (
     <div className="bg-navy-900 border border-navy-700 rounded-lg p-5 mb-6">
       <h3 className="text-sm font-semibold text-slate-200 mb-3">Create a Channel</h3>
@@ -70,78 +129,90 @@ export default function ChannelBrowserPanel({
         </div>
       )}
 
-      {/* Discoverable channels */}
-      {unjoinedChannels.length > 0 && (
+      {/* Discoverable channels grouped by region */}
+      {filtered.length > 0 && (
         <>
           <h3 className="text-sm font-semibold text-slate-200 mt-5 mb-3">Browse Channels</h3>
           <input
             type="text"
-            placeholder="Search channels..."
+            placeholder="Search channels by name or description..."
             value={channelSearch}
             onChange={e => onChannelSearchChange(e.target.value)}
-            className="w-full mb-2 px-3 py-2 bg-navy-800 border border-navy-700 rounded-lg text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-teal-500/50"
+            className="w-full mb-3 px-3 py-2 bg-navy-800 border border-navy-700 rounded-lg text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-teal-500/50"
           />
-          <div className="space-y-1.5 max-h-64 overflow-y-auto">
-            {unjoinedChannels.filter(ch => {
-              if (!channelSearch.trim()) return true;
-              const name = ch.name || "";
-              return name.toLowerCase().includes(channelSearch.toLowerCase());
-            }).map(ch => {
-              const isFull = !!(ch.max_members && ch.max_members > 0 && (ch.member_count || 0) >= ch.max_members);
-              return (
-              <div key={ch.id} className="flex items-center justify-between px-3 py-2.5 bg-navy-800 border border-navy-700 rounded-lg">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-slate-200 truncate">{ch.name || formatType(ch.type)}</p>
-                    {ch.type === "vessel_channel" && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
-                        <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                        Crew Only
-                      </span>
-                    )}
-                    {ch.type === "company_channel" && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
-                        <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2H4a1 1 0 110-2V4z" clipRule="evenodd" /></svg>
-                        Company
-                      </span>
-                    )}
-                    {ch.type === "port_channel" && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20 rounded">
-                        Open
-                      </span>
-                    )}
-                    {Boolean((ch as Record<string, unknown>).is_system) && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded">
-                        Official
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {ch.description && <p className="text-xs text-slate-500 truncate">{ch.description}</p>}
-                    {(ch.member_count !== undefined && ch.member_count > 0) && (
-                      <span className="text-[10px] text-slate-500 shrink-0">
-                        {ch.max_members && ch.max_members > 0
-                          ? `${ch.member_count}/${ch.max_members} members`
-                          : `${ch.member_count} members`}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {isFull ? (
-                  <span className="ml-3 px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium rounded shrink-0">
-                    Full
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {grouped.map(({ label, channels }) => (
+              <div key={label}>
+                <div className="flex items-center gap-2 mb-1.5 px-1">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                    {label}
                   </span>
-                ) : (
-                  <button onClick={() => onJoinChannel(ch.id)}
-                    className="ml-3 px-3 py-1 bg-teal-500/15 text-teal-400 hover:bg-teal-500/25 text-xs font-medium rounded transition-colors shrink-0">
-                    Join
-                  </button>
-                )}
+                  <span className="text-[10px] text-slate-600">({channels.length})</span>
+                  <div className="flex-1 border-t border-navy-700/50" />
+                </div>
+                <div className="space-y-1.5">
+                  {channels.map(ch => {
+                    const isFull = !!(ch.max_members && ch.max_members > 0 && (ch.member_count || 0) >= ch.max_members);
+                    return (
+                      <div key={ch.id} className="flex items-center justify-between px-3 py-2.5 bg-navy-800 border border-navy-700 rounded-lg">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-slate-200 truncate">{ch.name || formatType(ch.type)}</p>
+                            {ch.type === "vessel_channel" && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
+                                <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                                Crew Only
+                              </span>
+                            )}
+                            {ch.type === "company_channel" && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
+                                Company
+                              </span>
+                            )}
+                            {ch.type === "port_channel" && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20 rounded">
+                                Open
+                              </span>
+                            )}
+                            {Boolean((ch as Record<string, unknown>).is_system) && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded">
+                                Official
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {ch.description && <p className="text-xs text-slate-500 truncate">{ch.description}</p>}
+                            {(ch.member_count !== undefined && ch.member_count > 0) && (
+                              <span className="text-[10px] text-slate-500 shrink-0">
+                                {ch.max_members && ch.max_members > 0
+                                  ? `${ch.member_count}/${ch.max_members} members`
+                                  : `${ch.member_count} members`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isFull ? (
+                          <span className="ml-3 px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium rounded shrink-0">
+                            Full
+                          </span>
+                        ) : (
+                          <button onClick={() => onJoinChannel(ch.id)}
+                            className="ml-3 px-3 py-1 bg-teal-500/15 text-teal-400 hover:bg-teal-500/25 text-xs font-medium rounded transition-colors shrink-0">
+                            Join
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              );
-            })}
+            ))}
           </div>
         </>
+      )}
+
+      {filtered.length === 0 && channelSearch.trim() && (
+        <p className="mt-4 text-sm text-slate-500 text-center">No channels match your search.</p>
       )}
     </div>
   );
