@@ -1,5 +1,8 @@
+import { reportError } from "@/lib/errorReporting";
+
 const RESEND_API_URL = "https://api.resend.com/emails";
 const FROM_ADDRESS = "SeaSignal <notifications@seasignal.com>";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://seasignal.app";
 
 interface SendEmailParams {
   to: string;
@@ -52,14 +55,14 @@ export async function sendEmail({
 
     if (!res.ok) {
       const body = await res.text();
-      // TODO: send to error reporting service (e.g. Sentry)
+      reportError(new Error(`Resend API ${res.status}: ${body}`), { source: "email.send", meta: { to, subject } });
       return { success: false, error: `Resend API ${res.status}: ${body}` };
     }
 
     return { success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    // TODO: send to error reporting service (e.g. Sentry)
+    reportError(err, { source: "email.send", meta: { to, subject } });
     return { success: false, error: message };
   }
 }
@@ -109,7 +112,7 @@ export function newMessageEmail({
       <div style="margin:16px 0;padding:16px;background-color:#0b1628;border-left:3px solid #0d9488;border-radius:4px">
         <p style="margin:0;color:#cbd5e1;font-size:14px;line-height:1.5;white-space:pre-wrap">${escapeHtml(preview)}</p>
       </div>
-      <a href="https://seasignal.com/messages"
+      <a href="${APP_URL}/messages"
          style="display:inline-block;margin-top:12px;padding:10px 20px;background-color:#0d9488;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500">
         View conversation
       </a>
@@ -140,7 +143,7 @@ export function certExpiryEmail({
           ${escapeHtml(expiryDate)} — ${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining
         </p>
       </div>
-      <a href="https://seasignal.com/certs"
+      <a href="${APP_URL}/certs"
          style="display:inline-block;margin-top:12px;padding:10px 20px;background-color:#0d9488;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500">
         View certificates
       </a>

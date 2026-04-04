@@ -2,13 +2,10 @@
 import webpush from "web-push";
 import { createClient } from "@/lib/supabase/server";
 
-const VAPID_PUBLIC_KEY =
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ??
-  "BDz0EH_Vu60-4ddqvMu8_aur1oY9KbZocLGoDvL8VhpS09KlqLy_lz8Za1yzoAsLXodWOhD7h4jnDUE0woThCP0";
-
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? "";
 
-if (VAPID_PRIVATE_KEY) {
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
     "mailto:support@seasignal.app",
     VAPID_PUBLIC_KEY,
@@ -30,8 +27,8 @@ export async function sendPushNotification(
   profileId: string,
   payload: PushPayload,
 ): Promise<{ sent: number; failed: number }> {
-  if (!VAPID_PRIVATE_KEY) {
-    // VAPID key not configured — silently skip push in dev
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    // VAPID keys not configured — skip push (expected in dev)
     return { sent: 0, failed: 0 };
   }
 

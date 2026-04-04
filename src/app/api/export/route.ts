@@ -101,7 +101,9 @@ export async function GET(request: NextRequest) {
     recordCounts[key] = (value as unknown[]).length;
   }
 
-  const format = request.nextUrl.searchParams.get("format") || "json";
+  const formatParam = request.nextUrl.searchParams.get("format") || "json";
+  const validFormats = ["json", "csv"];
+  const format = validFormats.includes(formatParam) ? formatParam : "json";
 
   if (format === "csv") {
     // Build a single response with each table as a labelled CSV section

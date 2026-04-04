@@ -1,4 +1,4 @@
-const CACHE_NAME = "seasignal-v3";
+const CACHE_NAME = "seasignal-v4";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [
@@ -196,12 +196,19 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Navigation requests (HTML pages): network-first with offline fallback
+  // Don't cache authenticated routes to prevent stale data after logout
+  const AUTH_ROUTES = ["/dashboard", "/messages", "/profile", "/settings", "/admin", "/certs", "/sea-time", "/incidents", "/notifications", "/pay", "/jobs/mine", "/jobs/new"];
+  const isAuthRoute = AUTH_ROUTES.some((route) => url.pathname.startsWith(route));
+
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          // Only cache public pages, not authenticated routes
+          if (!isAuthRoute) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
         .catch(() =>

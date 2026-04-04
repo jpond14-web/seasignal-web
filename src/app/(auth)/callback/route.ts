@@ -19,11 +19,16 @@ export async function GET(request: Request) {
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("id")
+          .select("id, display_name, department_tag")
           .eq("auth_user_id", user.id)
           .single();
 
         if (!profile) {
+          return NextResponse.redirect(`${origin}/profile/setup`);
+        }
+
+        // Redirect to setup if essential fields are missing
+        if (!profile.display_name || !profile.department_tag) {
           return NextResponse.redirect(`${origin}/profile/setup`);
         }
       }

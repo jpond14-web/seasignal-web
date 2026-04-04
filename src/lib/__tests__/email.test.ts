@@ -60,7 +60,7 @@ describe('newMessageEmail', () => {
       channelName: 'Test',
       preview: 'Test',
     })
-    expect(html).toContain('href="https://seasignal.com/messages"')
+    expect(html).toContain('href="https://seasignal.app/messages"')
   })
 })
 
@@ -120,7 +120,7 @@ describe('certExpiryEmail', () => {
       expiryDate: '2024-01-01',
       daysLeft: 10,
     })
-    expect(html).toContain('href="https://seasignal.com/certs"')
+    expect(html).toContain('href="https://seasignal.app/certs"')
   })
 })
 

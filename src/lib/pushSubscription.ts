@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
+import { reportError } from "@/lib/errorReporting";
 
-const VAPID_PUBLIC_KEY =
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ??
-  "BDz0EH_Vu60-4ddqvMu8_aur1oY9KbZocLGoDvL8VhpS09KlqLy_lz8Za1yzoAsLXodWOhD7h4jnDUE0woThCP0";
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
 /**
  * Convert a base64 VAPID key to a Uint8Array for the subscribe() call.
@@ -42,6 +41,11 @@ async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration
  */
 export async function subscribeToPush(profileId: string): Promise<boolean> {
   try {
+    if (!VAPID_PUBLIC_KEY) {
+      console.warn("[push] NEXT_PUBLIC_VAPID_PUBLIC_KEY not configured");
+      return false;
+    }
+
     const permission = await requestNotificationPermission();
     if (permission !== "granted") {
       return false;
@@ -77,13 +81,13 @@ export async function subscribeToPush(profileId: string): Promise<boolean> {
     );
 
     if (error) {
-      // TODO: send to error reporting service
+      reportError(error, { source: "pushSubscription.subscribe", meta: { profileId } });
       return false;
     }
 
     return true;
-  } catch {
-    // TODO: send to error reporting service
+  } catch (err) {
+    reportError(err, { source: "pushSubscription.subscribe", meta: { profileId } });
     return false;
   }
 }
@@ -109,12 +113,12 @@ export async function unsubscribeFromPush(profileId: string): Promise<boolean> {
       .eq("profile_id", profileId);
 
     if (error) {
-      // TODO: send to error reporting service
+      reportError(error, { source: "pushSubscription.unsubscribe", meta: { profileId } });
     }
 
     return true;
-  } catch {
-    // TODO: send to error reporting service
+  } catch (err) {
+    reportError(err, { source: "pushSubscription.unsubscribe", meta: { profileId } });
     return false;
   }
 }

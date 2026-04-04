@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { reportError } from "@/lib/errorReporting";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -23,9 +24,10 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // TODO: Send to Sentry or other error reporting service
-    void error;
-    void errorInfo;
+    reportError(error, {
+      source: "ErrorBoundary",
+      meta: { componentStack: errorInfo.componentStack },
+    });
   }
 
   handleReset = () => {
@@ -33,8 +35,10 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   };
 
   handleReport = () => {
-    // TODO: Replace with Sentry.captureException or similar
-    alert("Error details have been logged. Thank you for reporting.");
+    if (this.state.error) {
+      reportError(this.state.error, { source: "ErrorBoundary.userReport" });
+    }
+    window.alert("Error details have been logged. Thank you for reporting.");
   };
 
   render() {

@@ -31,6 +31,9 @@ export default function AdminUsersPage() {
   const [verifiedFilter, setVerifiedFilter] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [adminProfileId, setAdminProfileId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const PAGE_SIZE = 50;
 
   // Fetch current admin's profile ID
   useEffect(() => {
@@ -71,12 +74,16 @@ export default function AdminUsersPage() {
         query = query.eq("is_verified", false);
       }
 
-      const { data } = await query.limit(200);
-      setUsers(data ?? []);
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE;
+      const { data } = await query.range(from, to);
+      const results = data ?? [];
+      setHasMore(results.length > PAGE_SIZE);
+      setUsers(results.slice(0, PAGE_SIZE));
       setLoading(false);
     }
     load();
-  }, [search, deptFilter, rankFilter, verifiedFilter]);
+  }, [search, deptFilter, rankFilter, verifiedFilter, page]);
 
   async function toggleVerify(userId: string, currentlyVerified: boolean) {
     setActionLoading(userId);
@@ -276,6 +283,25 @@ export default function AdminUsersPage() {
           {users.length === 0 && (
             <div className="text-center py-8">
               <p className="text-slate-400">No users found matching filters.</p>
+            </div>
+          )}
+          {(page > 0 || hasMore) && (
+            <div className="flex items-center justify-between mt-4 px-4">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="text-sm px-3 py-1.5 rounded bg-navy-800 border border-navy-600 text-slate-300 hover:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-slate-400">Page {page + 1}</span>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={!hasMore}
+                className="text-sm px-3 py-1.5 rounded bg-navy-800 border border-navy-600 text-slate-300 hover:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
             </div>
           )}
         </div>

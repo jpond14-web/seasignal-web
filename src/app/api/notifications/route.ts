@@ -3,6 +3,7 @@ import {
   sendEmail,
   newMessageEmail,
   certExpiryEmail,
+  escapeHtml,
 } from "@/lib/email";
 
 type NotificationType = "cert_expiry" | "message" | "review";
@@ -63,6 +64,20 @@ export async function POST(request: Request) {
     );
   }
 
+  // --- Ownership check: user can only trigger notifications for themselves ---
+  const { data: callerProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .single();
+
+  if (!callerProfile || callerProfile.id !== profileId) {
+    return Response.json(
+      { error: "You can only trigger notifications for your own profile" },
+      { status: 403 }
+    );
+  }
+
   // -----------------------------------------------------------------------
   // Check notification preferences from user_settings
   // -----------------------------------------------------------------------
@@ -92,7 +107,7 @@ export async function POST(request: Request) {
   }
 
   // -----------------------------------------------------------------------
-  // Resolve the recipient's email from the auth user
+  // Resolve the recipient's email
   // -----------------------------------------------------------------------
   const recipientEmail = user.email;
   if (!recipientEmail) {
@@ -130,7 +145,8 @@ export async function POST(request: Request) {
     case "review":
     default: {
       subject = "You have a new notification on SeaSignal";
-      html = `<p>You have a new notification. <a href="https://seasignal.com">View on SeaSignal</a></p>`;
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://seasignal.app";
+      html = `<p>You have a new notification. <a href="${appUrl}">View on SeaSignal</a></p>`;
       break;
     }
   }

@@ -28,6 +28,25 @@ export async function POST(request: Request) {
     );
   }
 
+  // Ownership check: only send push to yourself (or be admin)
+  const { data: callerProfile } = await supabase
+    .from("profiles")
+    .select("id, is_admin")
+    .eq("auth_user_id", user.id)
+    .single();
+
+  if (!callerProfile) {
+    return Response.json({ error: "Profile not found" }, { status: 404 });
+  }
+
+  // Non-admins can only push to their own profile
+  if (callerProfile.id !== profileId && !callerProfile.is_admin) {
+    return Response.json(
+      { error: "You can only send push notifications to your own profile" },
+      { status: 403 },
+    );
+  }
+
   const result = await sendPushNotification(profileId, {
     title,
     body: msgBody,
