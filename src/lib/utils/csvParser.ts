@@ -78,7 +78,7 @@ export function parseSeaTimeCsv(text: string): {
 
     // Validate days
     const days = parseInt(daysStr, 10);
-    if (isNaN(days) || days <= 0 || String(days) !== daysStr.trim()) {
+    if (isNaN(days) || days <= 0) {
       errors.push({ row: rowNum, message: `Days must be a positive integer, got "${daysStr}"` });
       continue;
     }

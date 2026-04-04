@@ -37,10 +37,9 @@ export interface UseUserSettingsReturn extends UserSettings {
 }
 
 export function useUserSettings(): UseUserSettingsReturn {
-  const supabase = createClient();
   const [settings, setSettings] = useState<UserSettings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
-  const [profileId, setProfileId] = useState<string | null>(null);
+  const profileIdRef = useRef<string | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingWrite = useRef<Partial<UserSettings>>({});
 
@@ -50,6 +49,7 @@ export function useUserSettings(): UseUserSettingsReturn {
 
     async function load() {
       try {
+        const supabase = createClient();
         const { data: userData } = await supabase.auth.getUser();
         if (!userData.user || cancelled) return;
 
@@ -60,7 +60,7 @@ export function useUserSettings(): UseUserSettingsReturn {
           .single();
 
         if (!profile || cancelled) return;
-        setProfileId(profile.id);
+        profileIdRef.current = profile.id;
 
         // user_settings may not yet be in the generated DB types
         const { data: row } = await (supabase as any)
@@ -93,7 +93,7 @@ export function useUserSettings(): UseUserSettingsReturn {
     return () => {
       cancelled = true;
     };
-  }, [supabase]);
+  }, []);
 
   const debounceSave = useCallback(
     (updates: Partial<UserSettings>) => {
@@ -105,13 +105,15 @@ export function useUserSettings(): UseUserSettingsReturn {
       }
 
       debounceTimer.current = setTimeout(async () => {
-        if (!profileId) return;
+        const pid = profileIdRef.current;
+        if (!pid) return;
+        const supabase = createClient();
         const payload = { ...pendingWrite.current };
         pendingWrite.current = {};
 
         await (supabase as any).from("user_settings").upsert(
           {
-            profile_id: profileId,
+            profile_id: pid,
             ...payload,
             updated_at: new Date().toISOString(),
           },
@@ -119,7 +121,7 @@ export function useUserSettings(): UseUserSettingsReturn {
         );
       }, 500);
     },
-    [profileId, supabase]
+    []
   );
 
   function makeSetter<K extends keyof UserSettings>(key: K) {

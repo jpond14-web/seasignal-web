@@ -18,13 +18,13 @@ type MutualCrewMember = {
 };
 
 export default function FindCrewPage() {
-  const supabase = createClient();
   const [crew, setCrew] = useState<MutualCrewMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
+      const supabase = createClient();
       setLoading(true);
       setError(null);
 
@@ -38,10 +38,23 @@ export default function FindCrewPage() {
         return;
       }
 
+      // Get profile_id first (the RPC expects profile_id, not auth user id)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .single();
+
+      if (!profile) {
+        setError("Profile not found. Please set up your profile first.");
+        setLoading(false);
+        return;
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error: rpcError } = await (supabase.rpc as any)(
         "find_mutual_crew",
-        { p_profile_id: user.id }
+        { p_profile_id: profile.id }
       );
 
       if (rpcError) {
@@ -57,7 +70,7 @@ export default function FindCrewPage() {
     }
 
     load();
-  }, [supabase]);
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -113,7 +126,7 @@ export default function FindCrewPage() {
                   {member.avatar_url ? (
                     <img
                       src={member.avatar_url}
-                      alt=""
+                      alt={member.display_name}
                       className="w-12 h-12 rounded-full object-cover"
                     />
                   ) : (

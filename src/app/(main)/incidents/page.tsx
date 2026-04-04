@@ -119,8 +119,8 @@ export default function IncidentsPage() {
     const incidentDate = inc.incident_date
       ? new Date(inc.incident_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
       : "Not specified";
-    const recordedDate = new Date(inc.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    const exportedDate = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const recordedDate = new Date(inc.created_at).toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const exportedDate = new Date().toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
     const description = inc.description_encrypted || "No description provided.";
 
     const html = `<!DOCTYPE html>
