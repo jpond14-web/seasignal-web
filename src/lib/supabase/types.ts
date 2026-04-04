@@ -848,6 +848,7 @@ export type Database = {
           experience_band: Database["public"]["Enums"]["experience_band"] | null
           home_port: string | null
           id: string
+          is_admin: boolean | null
           is_verified: boolean | null
           last_seen_at: string | null
           rank_range: Database["public"]["Enums"]["rank_category"] | null
@@ -872,6 +873,7 @@ export type Database = {
             | null
           home_port?: string | null
           id?: string
+          is_admin?: boolean | null
           is_verified?: boolean | null
           last_seen_at?: string | null
           rank_range?: Database["public"]["Enums"]["rank_category"] | null
@@ -896,6 +898,7 @@ export type Database = {
             | null
           home_port?: string | null
           id?: string
+          is_admin?: boolean | null
           is_verified?: boolean | null
           last_seen_at?: string | null
           rank_range?: Database["public"]["Enums"]["rank_category"] | null
@@ -1419,6 +1422,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_messages: { Args: never; Returns: undefined }
       find_mutual_crew: {
         Args: { p_profile_id: string }
         Returns: {

@@ -39,10 +39,10 @@ export default function AdminLayout({
       }
       const { data: profile } = await supabase
         .from("profiles")
-        .select("is_verified")
+        .select("is_admin")
         .eq("auth_user_id", user.id)
         .single();
-      setAuthorized(!!profile?.is_verified);
+      setAuthorized(!!profile?.is_admin);
     }
     checkAdmin();
   }, [router]);

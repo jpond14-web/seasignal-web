@@ -34,15 +34,32 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Redirect unauthenticated users away from protected routes
+  const pathname = request.nextUrl.pathname;
+  const publicPatterns = [
+    /^\/$/,
+    /^\/login/,
+    /^\/signup/,
+    /^\/callback/,
+    /^\/api\/.*/,
+    /^\/_next\/.*/,
+    /^\/favicon\.ico$/,
+    /^\/manifest\.json$/,
+    /^\/sw\.js$/,
+    /^\/robots\.txt$/,
+    /^\/sitemap\.xml$/,
+    /^\/offline\.html$/,
+    /^\/icons\/.*/,
+    /^\/privacy/,
+    /^\/terms/,
+    /^\/about/,
+    /^\/contact/,
+    /^\/companies/,
+  ];
+  const isPublicRoute = publicPatterns.some((pattern) => pattern.test(pathname));
   const isAuthRoute =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/signup") ||
-    request.nextUrl.pathname.startsWith("/callback");
-  const isCompaniesRoute =
-    request.nextUrl.pathname === "/companies" ||
-    request.nextUrl.pathname.startsWith("/companies/");
-  const isPublicRoute =
-    request.nextUrl.pathname === "/" || isAuthRoute || isCompaniesRoute;
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/callback");
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();

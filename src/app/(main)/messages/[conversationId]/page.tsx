@@ -136,11 +136,11 @@ export default function ConversationPage() {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: profile } = await supabase.from("profiles").select("id, display_name, is_verified").eq("auth_user_id", user.id).single();
+      const { data: profile } = await supabase.from("profiles").select("id, display_name, is_admin").eq("auth_user_id", user.id).single();
       if (profile) {
         setProfileId(profile.id);
         setProfileName(profile.display_name);
-        setIsAdmin(!!profile.is_verified);
+        setIsAdmin(!!profile.is_admin);
         // Update last_seen_at
         await supabase.from("profiles").update({ last_seen_at: new Date().toISOString() }).eq("id", profile.id);
       }

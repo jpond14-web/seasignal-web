@@ -31,12 +31,23 @@ export const metadata: Metadata = {
     siteName: "SeaSignal",
     locale: "en_US",
     url: "https://seasignal.app",
+    // TODO: Replace SVG with PNG for broader social platform support
+    images: [
+      {
+        url: "https://seasignal.app/og-image.svg",
+        width: 1200,
+        height: 630,
+        alt: "SeaSignal — Professional Network for Seafarers",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "SeaSignal — Professional Network for Seafarers",
     description:
       "Privacy-first platform connecting maritime professionals worldwide. Track certificates, share pay data, and verify contracts.",
+    // TODO: Replace SVG with PNG for broader social platform support
+    images: ["https://seasignal.app/og-image.svg"],
   },
   alternates: {
     canonical: "https://seasignal.app",

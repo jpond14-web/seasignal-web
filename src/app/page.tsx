@@ -167,23 +167,10 @@ export default function LandingPage() {
             </a>
           </div>
 
-          {/* Stats bar */}
-          <div className="relative mt-10 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse-dot" />
-              5,000+ seafarers
-            </span>
-            <span className="hidden sm:inline text-navy-600">|</span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse-dot" />
-              2,500+ company reviews
-            </span>
-            <span className="hidden sm:inline text-navy-600">|</span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse-dot" />
-              80+ countries represented
-            </span>
-          </div>
+          {/* Community call-to-action */}
+          <p className="relative mt-10 text-sm text-slate-400">
+            Join the growing maritime community &mdash; free, private, and built for seafarers.
+          </p>
 
           <WaveDivider />
         </section>
