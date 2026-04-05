@@ -24,6 +24,11 @@ const publicPatterns = [
   /^\/about/,
   /^\/contact/,
   /^\/companies/,
+  /^\/intel\/companies/,
+  /^\/intel\/vessels/,
+  /^\/intel\/agencies/,
+  /^\/community\/forums/,
+  /^\/community\/seafarers/,
 ]
 
 function isPublicRoute(pathname: string): boolean {
@@ -35,7 +40,7 @@ describe('middleware public route patterns', () => {
     const publicRoutes = [
       '/',
       '/login',
-      '/login?redirect=/dashboard',
+      '/login?redirect=/home',
       '/signup',
       '/signup/verify',
       '/callback',
@@ -56,6 +61,17 @@ describe('middleware public route patterns', () => {
       '/contact',
       '/companies',
       '/companies/maersk',
+      // New hub public routes
+      '/intel/companies',
+      '/intel/companies/maersk',
+      '/intel/vessels',
+      '/intel/vessels/some-vessel',
+      '/intel/agencies',
+      '/intel/agencies/some-agency',
+      '/community/forums',
+      '/community/forums/general',
+      '/community/seafarers',
+      '/community/seafarers/some-user',
     ]
 
     for (const route of publicRoutes) {
@@ -67,15 +83,25 @@ describe('middleware public route patterns', () => {
 
   describe('private routes are not matched by public patterns', () => {
     const privateRoutes = [
-      '/dashboard',
+      '/home',
       '/messages',
       '/messages/conv-123',
       '/settings',
-      '/certs',
-      '/sea-time',
+      '/career/certs',
+      '/career/sea-time',
+      '/career/jobs',
       '/profile',
-      '/seafarers/find-crew',
-      '/contract-check',
+      '/community/stories',
+      '/community/mentors',
+      '/intel/alerts',
+      '/intel/guides',
+      '/welfare/incidents',
+      '/welfare/rights',
+      '/welfare/emergency',
+      '/welfare/mental-health',
+      '/welfare/mlc',
+      '/admin',
+      '/admin/users',
     ]
 
     for (const route of privateRoutes) {

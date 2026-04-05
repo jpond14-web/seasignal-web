@@ -132,7 +132,7 @@ export default async function VesselDetailPage({
                       : "Seafarer"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {new Date(r.created_at).toLocaleDateString()}
+                    {new Date(r.created_at ?? "").toLocaleDateString()}
                   </p>
                 </div>
                 {ratings && (

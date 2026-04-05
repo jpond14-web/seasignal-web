@@ -193,7 +193,7 @@ export default function MessagesPage() {
       for (const msg of unreadMessages) {
         const membership = membershipMap.get(msg.conversation_id);
         const lastRead = membership?.last_read_at;
-        if (!lastRead || msg.created_at > lastRead) {
+        if (!lastRead || (msg.created_at && msg.created_at > lastRead)) {
           unreadCountMap.set(msg.conversation_id, (unreadCountMap.get(msg.conversation_id) || 0) + 1);
         }
       }

@@ -13,8 +13,8 @@ type Report = {
   status: string | null;
   reporter_id: string;
   reviewed_by: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
   reporter_name: string;
   message_content: string | null;
   message_sender_id: string | null;
@@ -294,7 +294,7 @@ export default function AdminReportsPage() {
 
                   {/* Date */}
                   <p className="text-xs text-slate-500 mt-2">
-                    {new Date(report.created_at).toLocaleString()}
+                    {new Date(report.created_at ?? "").toLocaleString()}
                   </p>
                 </div>
 

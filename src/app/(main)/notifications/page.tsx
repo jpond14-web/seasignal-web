@@ -224,7 +224,7 @@ export default function NotificationsPage() {
                   <p className="text-xs text-slate-400 mt-0.5">{notif.body}</p>
                 )}
                 <p className="text-[10px] text-slate-500 mt-1">
-                  {relativeTime(notif.created_at)}
+                  {relativeTime(notif.created_at ?? "")}
                 </p>
               </div>
               <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -18,7 +18,7 @@ export type Database = {
         Row: {
           action: string
           admin_id: string | null
-          created_at: string
+          created_at: string | null
           details: Json | null
           id: string
           target_id: string | null
@@ -57,7 +57,7 @@ export type Database = {
           alert_days: number[] | null
           cert_number: string | null
           cert_type: Database["public"]["Enums"]["cert_type"]
-          created_at: string
+          created_at: string | null
           document_url: string | null
           expiry_date: string | null
           flag_state: string | null
@@ -69,7 +69,7 @@ export type Database = {
           profile_id: string
           status: Database["public"]["Enums"]["cert_status"] | null
           title: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           alert_days?: number[] | null
@@ -153,14 +153,14 @@ export type Database = {
           company_type: Database["public"]["Enums"]["company_type"]
           contract_accuracy_score: number | null
           country: string | null
-          created_at: string
+          created_at: string | null
           id: string
           name: string
           pattern_flags: Json | null
           pay_reliability_score: number | null
           review_count: number | null
           safety_culture_score: number | null
-          updated_at: string
+          updated_at: string | null
           website: string | null
         }
         Insert: {
@@ -198,7 +198,7 @@ export type Database = {
       company_follows: {
         Row: {
           company_id: string
-          created_at: string
+          created_at: string | null
           id: string
           profile_id: string
         }
@@ -292,7 +292,7 @@ export type Database = {
           context_port: string | null
           context_vessel_id: string | null
           country_code: string | null
-          created_at: string
+          created_at: string | null
           created_by: string | null
           department_tags:
             | Database["public"]["Enums"]["department_type"][]
@@ -314,7 +314,7 @@ export type Database = {
           slug: string | null
           sort_order: number | null
           type: Database["public"]["Enums"]["conversation_type"]
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           access_mode?: string | null
@@ -416,7 +416,7 @@ export type Database = {
       crew_history: {
         Row: {
           company_id: string | null
-          created_at: string
+          created_at: string | null
           id: string
           is_current: boolean | null
           joined_at: string | null
@@ -473,7 +473,7 @@ export type Database = {
       }
       forum_categories: {
         Row: {
-          created_at: string
+          created_at: string | null
           description: string | null
           icon: string | null
           id: string
@@ -505,7 +505,7 @@ export type Database = {
         Row: {
           body: string
           category_id: string
-          created_at: string
+          created_at: string | null
           id: string
           is_anonymous: boolean | null
           is_pinned: boolean | null
@@ -513,7 +513,7 @@ export type Database = {
           profile_id: string | null
           reply_count: number | null
           title: string | null
-          updated_at: string
+          updated_at: string | null
           upvote_count: number | null
         }
         Insert: {
@@ -568,19 +568,108 @@ export type Database = {
           },
         ]
       }
+      guide_votes: {
+        Row: {
+          created_at: string
+          guide_id: string
+          id: string
+          profile_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          guide_id: string
+          id?: string
+          profile_id: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          guide_id?: string
+          id?: string
+          profile_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guide_votes_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "guides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guide_votes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guides: {
+        Row: {
+          author_id: string
+          body: string
+          category: Database["public"]["Enums"]["guide_category"]
+          created_at: string
+          id: string
+          is_pinned: boolean
+          tags: string[]
+          title: string
+          updated_at: string
+          view_count: number
+          vote_count: number
+        }
+        Insert: {
+          author_id: string
+          body: string
+          category?: Database["public"]["Enums"]["guide_category"]
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          tags?: string[]
+          title: string
+          updated_at?: string
+          view_count?: number
+          vote_count?: number
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          category?: Database["public"]["Enums"]["guide_category"]
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          view_count?: number
+          vote_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guides_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incident_logs: {
         Row: {
           attachments: Json | null
           category: Database["public"]["Enums"]["incident_category"]
           company_id: string | null
-          created_at: string
+          created_at: string | null
           description_encrypted: string | null
           id: string
           incident_date: string | null
           location: string | null
           profile_id: string
           title: string
-          updated_at: string
+          updated_at: string | null
           vessel_id: string | null
         }
         Insert: {
@@ -635,11 +724,64 @@ export type Database = {
           },
         ]
       }
+      industry_alerts: {
+        Row: {
+          author_id: string
+          body: string
+          category: Database["public"]["Enums"]["alert_category"]
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_verified: boolean
+          region_tag: string | null
+          severity: Database["public"]["Enums"]["alert_severity"]
+          source_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          category?: Database["public"]["Enums"]["alert_category"]
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_verified?: boolean
+          region_tag?: string | null
+          severity?: Database["public"]["Enums"]["alert_severity"]
+          source_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          category?: Database["public"]["Enums"]["alert_category"]
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_verified?: boolean
+          region_tag?: string | null
+          severity?: Database["public"]["Enums"]["alert_severity"]
+          source_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "industry_alerts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_applications: {
         Row: {
           applicant_id: string
           cover_message: string | null
-          created_at: string
+          created_at: string | null
           id: string
           job_id: string
           status: string | null
@@ -676,7 +818,7 @@ export type Database = {
           benefits: string[] | null
           company_id: string | null
           contract_months: number | null
-          created_at: string
+          created_at: string | null
           currency: string | null
           department: string | null
           description: string
@@ -691,7 +833,7 @@ export type Database = {
           salary_min: number | null
           status: string | null
           title: string
-          updated_at: string
+          updated_at: string | null
           vessel_type: string | null
         }
         Insert: {
@@ -750,12 +892,98 @@ export type Database = {
           },
         ]
       }
+      mentors: {
+        Row: {
+          bio: string
+          created_at: string
+          expertise_tags: string[]
+          id: string
+          is_active: boolean
+          max_mentees: number
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          bio: string
+          created_at?: string
+          expertise_tags?: string[]
+          id?: string
+          is_active?: boolean
+          max_mentees?: number
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          bio?: string
+          created_at?: string
+          expertise_tags?: string[]
+          id?: string
+          is_active?: boolean
+          max_mentees?: number
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentors_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentorship_requests: {
+        Row: {
+          created_at: string
+          id: string
+          mentee_id: string
+          mentor_id: string
+          message: string | null
+          status: Database["public"]["Enums"]["mentorship_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mentee_id: string
+          mentor_id: string
+          message?: string | null
+          status?: Database["public"]["Enums"]["mentorship_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mentee_id?: string
+          mentor_id?: string
+          message?: string | null
+          status?: Database["public"]["Enums"]["mentorship_request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorship_requests_mentee_id_fkey"
+            columns: ["mentee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorship_requests_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           attachments: Json | null
           ciphertext: string | null
           conversation_id: string
-          created_at: string
+          created_at: string | null
           edited_at: string | null
           expires_at: string | null
           id: string
@@ -820,7 +1048,7 @@ export type Database = {
       notifications: {
         Row: {
           body: string | null
-          created_at: string
+          created_at: string | null
           id: string
           is_read: boolean | null
           link: string | null
@@ -854,7 +1082,7 @@ export type Database = {
         Row: {
           company_id: string | null
           contract_duration_months: number | null
-          created_at: string
+          created_at: string | null
           flag_state: string | null
           id: string
           is_verified: boolean | null
@@ -915,7 +1143,7 @@ export type Database = {
       }
       post_votes: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           post_id: string
           profile_id: string
@@ -958,7 +1186,7 @@ export type Database = {
           available_for: string[] | null
           avatar_url: string | null
           bio: string | null
-          created_at: string
+          created_at: string | null
           current_port: string | null
           department_tag: Database["public"]["Enums"]["department_type"] | null
           display_name: string
@@ -973,7 +1201,7 @@ export type Database = {
           subscription_tier:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
-          updated_at: string
+          updated_at: string | null
           vessel_type_tags: Database["public"]["Enums"]["vessel_type"][] | null
         }
         Insert: {
@@ -1067,14 +1295,14 @@ export type Database = {
         Row: {
           content_id: string
           content_type: string
-          created_at: string
+          created_at: string | null
           details: string | null
           id: string
           reason: string
           reporter_id: string
           reviewed_by: string | null
           status: string | null
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           content_id: string
@@ -1115,7 +1343,7 @@ export type Database = {
           batch_release_at: string | null
           company_id: string | null
           contract_period: string | null
-          created_at: string
+          created_at: string | null
           id: string
           is_anonymous: boolean | null
           narrative: string | null
@@ -1124,7 +1352,7 @@ export type Database = {
           report_count: number | null
           review_type: Database["public"]["Enums"]["review_type"]
           status: Database["public"]["Enums"]["review_status"] | null
-          updated_at: string
+          updated_at: string | null
           upvote_count: number | null
           vessel_id: string | null
         }
@@ -1186,10 +1414,54 @@ export type Database = {
           },
         ]
       }
+      sea_stories: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          image_url: string | null
+          like_count: number
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          like_count?: number
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          like_count?: number
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sea_stories_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sea_time_records: {
         Row: {
           company_id: string | null
-          created_at: string
+          created_at: string | null
           days: number
           end_date: string | null
           id: string
@@ -1255,7 +1527,7 @@ export type Database = {
       }
       search_analytics: {
         Row: {
-          created_at: string
+          created_at: string | null
           filters: Json | null
           id: string
           result_count: number | null
@@ -1280,11 +1552,47 @@ export type Database = {
         }
         Relationships: []
       }
+      story_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          story_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          story_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_reactions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_reactions_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "sea_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_blocks: {
         Row: {
           blocked_id: string
           blocker_id: string
-          created_at: string
+          created_at: string | null
           id: string
         }
         Insert: {
@@ -1401,7 +1709,7 @@ export type Database = {
       vault_verified_identities: {
         Row: {
           coc_number_hash: string | null
-          created_at: string
+          created_at: string | null
           department: Database["public"]["Enums"]["department_type"] | null
           document_refs: Json | null
           flag_state: string | null
@@ -1410,7 +1718,7 @@ export type Database = {
           notes: string | null
           platform_token: string
           rank_category: Database["public"]["Enums"]["rank_category"] | null
-          updated_at: string
+          updated_at: string | null
           verification_method:
             | Database["public"]["Enums"]["verification_method"]
             | null
@@ -1465,7 +1773,7 @@ export type Database = {
         Row: {
           avg_rating: number | null
           built_year: number | null
-          created_at: string
+          created_at: string | null
           dwt: number | null
           flag_state: string | null
           id: string
@@ -1475,7 +1783,7 @@ export type Database = {
           operator_company_id: string | null
           owner_company_id: string | null
           review_count: number | null
-          updated_at: string
+          updated_at: string | null
           vessel_type: Database["public"]["Enums"]["vessel_type"] | null
         }
         Insert: {
@@ -1562,6 +1870,16 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
+      alert_category:
+        | "safety"
+        | "regulatory"
+        | "weather"
+        | "piracy"
+        | "port"
+        | "industry"
+        | "labor"
+        | "other"
+      alert_severity: "info" | "warning" | "critical"
       cert_status: "valid" | "expiring" | "expired"
       cert_type:
         | "coc"
@@ -1583,6 +1901,15 @@ export type Database = {
         | "channel"
       department_type: "deck" | "engine" | "electro" | "catering"
       experience_band: "0_2y" | "3_5y" | "6_10y" | "10y_plus"
+      guide_category:
+        | "safety"
+        | "navigation"
+        | "engineering"
+        | "regulations"
+        | "career"
+        | "wellness"
+        | "finance"
+        | "other"
       incident_category:
         | "safety"
         | "maintenance"
@@ -1590,6 +1917,11 @@ export type Database = {
         | "harassment"
         | "contract"
         | "other"
+      mentorship_request_status:
+        | "pending"
+        | "accepted"
+        | "declined"
+        | "cancelled"
       message_type: "text" | "image" | "file" | "system"
       rank_category: "officer" | "rating" | "cadet"
       review_status: "pending" | "published" | "flagged" | "removed"
@@ -1739,6 +2071,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      alert_category: [
+        "safety",
+        "regulatory",
+        "weather",
+        "piracy",
+        "port",
+        "industry",
+        "labor",
+        "other",
+      ],
+      alert_severity: ["info", "warning", "critical"],
       cert_status: ["valid", "expiring", "expired"],
       cert_type: [
         "coc",
@@ -1762,6 +2105,16 @@ export const Constants = {
       ],
       department_type: ["deck", "engine", "electro", "catering"],
       experience_band: ["0_2y", "3_5y", "6_10y", "10y_plus"],
+      guide_category: [
+        "safety",
+        "navigation",
+        "engineering",
+        "regulations",
+        "career",
+        "wellness",
+        "finance",
+        "other",
+      ],
       incident_category: [
         "safety",
         "maintenance",
@@ -1769,6 +2122,12 @@ export const Constants = {
         "harassment",
         "contract",
         "other",
+      ],
+      mentorship_request_status: [
+        "pending",
+        "accepted",
+        "declined",
+        "cancelled",
       ],
       message_type: ["text", "image", "file", "system"],
       rank_category: ["officer", "rating", "cadet"],
@@ -1796,3 +2155,4 @@ export const Constants = {
     },
   },
 } as const
+

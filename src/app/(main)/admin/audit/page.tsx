@@ -10,7 +10,7 @@ type AuditEntry = {
   target_type: string;
   target_id: string | null;
   details: Record<string, unknown> | null;
-  created_at: string;
+  created_at: string | null;
   admin_name: string;
 };
 
@@ -152,7 +152,7 @@ export default function AdminAuditPage() {
                     className="border-b border-navy-700/50 bg-navy-900 hover:bg-navy-800/50 transition-colors"
                   >
                     <td className="px-4 py-3 text-slate-300 text-xs whitespace-nowrap">
-                      {new Date(entry.created_at).toLocaleString()}
+                      {new Date(entry.created_at ?? "").toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-slate-200 font-medium">
                       {entry.admin_name}

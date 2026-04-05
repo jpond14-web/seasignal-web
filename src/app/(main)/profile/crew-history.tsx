@@ -14,7 +14,7 @@ type CrewHistoryEntry = {
   joined_at: string | null;
   left_at: string | null;
   is_current: boolean | null;
-  created_at: string;
+  created_at: string | null;
   vessel_name?: string;
   company_name?: string;
 };

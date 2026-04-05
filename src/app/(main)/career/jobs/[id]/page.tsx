@@ -236,7 +236,7 @@ export default function JobDetailPage() {
               )}
               <div>
                 <p className="text-slate-500">Posted</p>
-                <p className="text-slate-200">{new Date(job.created_at).toLocaleDateString()}</p>
+                <p className="text-slate-200">{new Date(job.created_at ?? "").toLocaleDateString()}</p>
               </div>
             </div>
           </div>
@@ -361,7 +361,7 @@ export default function JobDetailPage() {
                           </p>
                         )}
                         <p className="text-xs text-slate-500 mt-2">
-                          Applied {new Date(app.created_at).toLocaleDateString()}
+                          Applied {new Date(app.created_at ?? "").toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">

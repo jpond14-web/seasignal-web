@@ -119,7 +119,7 @@ export default function IncidentsPage() {
     const incidentDate = inc.incident_date
       ? new Date(inc.incident_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
       : "Not specified";
-    const recordedDate = new Date(inc.created_at).toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const recordedDate = new Date(inc.created_at ?? "").toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
     const exportedDate = new Date().toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
     const description = inc.description_encrypted || "No description provided.";
 
@@ -285,7 +285,7 @@ export default function IncidentsPage() {
                   </div>
                 </div>
                 <p className="text-xs text-slate-500 shrink-0 ml-4">
-                  {new Date(inc.created_at).toLocaleDateString()}
+                  {new Date(inc.created_at ?? "").toLocaleDateString()}
                 </p>
               </div>
               {inc.description_encrypted && (

@@ -120,7 +120,7 @@ export default async function AgencyDetailPage({
                     {r.is_anonymous ? "Anonymous" : "Seafarer"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {new Date(r.created_at).toLocaleDateString()}
+                    {new Date(r.created_at ?? "").toLocaleDateString()}
                   </p>
                 </div>
                 {r.contract_period && (

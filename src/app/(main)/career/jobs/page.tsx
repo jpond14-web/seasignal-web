@@ -216,7 +216,7 @@ export default function JobsPage() {
                       Embark: {new Date(job.embarkation_date).toLocaleDateString()}
                     </p>
                   )}
-                  <p className="text-xs text-slate-500 mt-2">{timeAgo(job.created_at)}</p>
+                  <p className="text-xs text-slate-500 mt-2">{timeAgo(job.created_at ?? "")}</p>
                 </div>
               </div>
             </Link>

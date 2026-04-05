@@ -11,7 +11,7 @@ type Channel = {
   description: string | null;
   access_mode: string | null;
   max_members: number | null;
-  created_at: string;
+  created_at: string | null;
   member_count: number;
   message_count: number;
 };
@@ -314,7 +314,7 @@ export default function AdminChannelsPage() {
                       </span>
                     )}
                     <span>
-                      {new Date(channel.created_at).toLocaleDateString()}
+                      {new Date(channel.created_at ?? "").toLocaleDateString()}
                     </span>
                   </div>
                 </div>

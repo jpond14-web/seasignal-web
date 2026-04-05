@@ -41,7 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       dynamicEntries.push(
         ...companies.data.map((c) => ({
           url: `${appUrl}/intel/companies/${c.id}`,
-          lastModified: new Date(c.updated_at),
+          lastModified: new Date(c.updated_at ?? new Date().toISOString()),
           changeFrequency: "weekly" as const,
           priority: 0.6,
         }))
@@ -52,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       dynamicEntries.push(
         ...vessels.data.map((v) => ({
           url: `${appUrl}/intel/vessels/${v.id}`,
-          lastModified: new Date(v.updated_at),
+          lastModified: new Date(v.updated_at ?? new Date().toISOString()),
           changeFrequency: "weekly" as const,
           priority: 0.6,
         }))
@@ -63,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       dynamicEntries.push(
         ...forumCategories.data.map((f) => ({
           url: `${appUrl}/community/forums/${f.slug}`,
-          lastModified: new Date(f.created_at),
+          lastModified: new Date(f.created_at ?? new Date().toISOString()),
           changeFrequency: "daily" as const,
           priority: 0.5,
         }))
@@ -74,7 +74,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       dynamicEntries.push(
         ...jobs.data.map((j) => ({
           url: `${appUrl}/career/jobs/${j.id}`,
-          lastModified: new Date(j.updated_at),
+          lastModified: new Date(j.updated_at ?? new Date().toISOString()),
           changeFrequency: "daily" as const,
           priority: 0.5,
         }))

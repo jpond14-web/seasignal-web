@@ -254,7 +254,7 @@ export function NotificationBell() {
                       </p>
                     )}
                     <p className="text-[10px] text-slate-500 mt-1">
-                      {relativeTime(notif.created_at)}
+                      {relativeTime(notif.created_at ?? "")}
                     </p>
                   </div>
                   {!notif.is_read && (
