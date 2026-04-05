@@ -120,7 +120,7 @@ describe('certExpiryEmail', () => {
       expiryDate: '2024-01-01',
       daysLeft: 10,
     })
-    expect(html).toContain('href="https://seasignal.app/certs"')
+    expect(html).toContain('href="https://seasignal.app/career/certs"')
   })
 })
 

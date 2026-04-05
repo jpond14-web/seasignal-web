@@ -50,7 +50,7 @@ export default function LoginPage() {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
-      window.location.assign("/dashboard");
+      window.location.assign("/home");
     }
   }
 
@@ -85,7 +85,7 @@ export default function LoginPage() {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
-      window.location.assign("/dashboard");
+      window.location.assign("/home");
     }
   }
 

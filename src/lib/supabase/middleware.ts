@@ -54,6 +54,11 @@ export async function updateSession(request: NextRequest) {
     /^\/about/,
     /^\/contact/,
     /^\/companies/,
+    /^\/intel\/companies/,
+    /^\/intel\/vessels/,
+    /^\/intel\/agencies/,
+    /^\/community\/forums/,
+    /^\/community\/seafarers/,
   ];
   const isPublicRoute = publicPatterns.some((pattern) => pattern.test(pathname));
   const isAuthRoute =
@@ -70,7 +75,7 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from auth pages
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/home";
     return NextResponse.redirect(url);
   }
 
@@ -84,7 +89,7 @@ export async function updateSession(request: NextRequest) {
 
     if (!adminProfile?.is_admin) {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = "/home";
       return NextResponse.redirect(url);
     }
   }

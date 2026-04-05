@@ -117,7 +117,7 @@ export function GlobalSearch() {
           category: "vessels",
           title: v.name,
           subtitle: [v.vessel_type, v.flag_state].filter(Boolean).join(" · "),
-          href: `/vessels/${v.id}`,
+          href: `/intel/vessels/${v.id}`,
         });
       }
     }
@@ -129,7 +129,7 @@ export function GlobalSearch() {
           category: "companies",
           title: c.name,
           subtitle: [c.company_type, c.country].filter(Boolean).join(" · "),
-          href: `/companies/${c.id}`,
+          href: `/intel/companies/${c.id}`,
         });
       }
     }
@@ -141,7 +141,7 @@ export function GlobalSearch() {
           category: "seafarers",
           title: p.display_name,
           subtitle: [p.rank_range, p.department_tag].filter(Boolean).join(" · "),
-          href: `/seafarers/${p.id}`,
+          href: `/community/seafarers/${p.id}`,
         });
       }
     }
@@ -153,7 +153,7 @@ export function GlobalSearch() {
           category: "forums",
           title: f.title ?? "Untitled post",
           subtitle: null,
-          href: `/forums/post/${f.id}`,
+          href: `/community/forums/post/${f.id}`,
         });
       }
     }
@@ -167,7 +167,7 @@ export function GlobalSearch() {
           subtitle: [c.cert_type, c.expiry_date ? `Exp: ${c.expiry_date}` : null]
             .filter(Boolean)
             .join(" · "),
-          href: `/certs`,
+          href: `/career/certs`,
         });
       }
     }

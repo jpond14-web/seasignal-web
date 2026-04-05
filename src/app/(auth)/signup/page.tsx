@@ -94,7 +94,7 @@ export default function SignupPage() {
     if (error) {
       setMessage({ type: "error", text: error.message });
     } else {
-      window.location.assign("/dashboard");
+      window.location.assign("/home");
     }
   }
 

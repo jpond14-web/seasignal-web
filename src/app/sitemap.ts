@@ -12,11 +12,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/terms",
     "/about",
     "/contact",
-    "/companies",
-    "/vessels",
-    "/forums",
-    "/jobs",
-    "/agencies",
+    "/intel/companies",
+    "/intel/vessels",
+    "/community/forums",
+    "/career/jobs",
+    "/intel/agencies",
   ];
 
   const staticEntries: MetadataRoute.Sitemap = staticPages.map((path) => ({
@@ -40,7 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (companies.data) {
       dynamicEntries.push(
         ...companies.data.map((c) => ({
-          url: `${appUrl}/companies/${c.id}`,
+          url: `${appUrl}/intel/companies/${c.id}`,
           lastModified: new Date(c.updated_at),
           changeFrequency: "weekly" as const,
           priority: 0.6,
@@ -51,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (vessels.data) {
       dynamicEntries.push(
         ...vessels.data.map((v) => ({
-          url: `${appUrl}/vessels/${v.id}`,
+          url: `${appUrl}/intel/vessels/${v.id}`,
           lastModified: new Date(v.updated_at),
           changeFrequency: "weekly" as const,
           priority: 0.6,
@@ -62,7 +62,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (forumCategories.data) {
       dynamicEntries.push(
         ...forumCategories.data.map((f) => ({
-          url: `${appUrl}/forums/${f.slug}`,
+          url: `${appUrl}/community/forums/${f.slug}`,
           lastModified: new Date(f.created_at),
           changeFrequency: "daily" as const,
           priority: 0.5,
@@ -73,7 +73,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (jobs.data) {
       dynamicEntries.push(
         ...jobs.data.map((j) => ({
-          url: `${appUrl}/jobs/${j.id}`,
+          url: `${appUrl}/career/jobs/${j.id}`,
           lastModified: new Date(j.updated_at),
           changeFrequency: "daily" as const,
           priority: 0.5,

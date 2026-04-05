@@ -71,12 +71,12 @@ export default function ProfileSetupPage() {
     if (insertError) {
       if (insertError.code === "23505") {
         // Profile already exists, just redirect
-        router.push("/dashboard");
+        router.push("/home");
       } else {
         setError(insertError.message);
       }
     } else {
-      router.push("/dashboard");
+      router.push("/home");
     }
   }
 

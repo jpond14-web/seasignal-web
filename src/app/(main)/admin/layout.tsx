@@ -70,7 +70,7 @@ export default function AdminLayout({
             You need to be a verified admin to access this area.
           </p>
           <Link
-            href="/dashboard"
+            href="/home"
             className="inline-block mt-4 px-4 py-2 bg-navy-800 border border-navy-600 rounded text-sm text-slate-300 hover:bg-navy-700 transition-colors"
           >
             Back to Dashboard

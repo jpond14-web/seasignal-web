@@ -344,10 +344,10 @@ export default function LandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-slate-300 mb-3">Platform</h4>
               <ul className="space-y-2 text-sm text-slate-500">
-                <li><Link href="/companies" className="hover:text-slate-300 transition-colors">Companies</Link></li>
-                <li><Link href="/pay" className="hover:text-slate-300 transition-colors">Pay Data</Link></li>
-                <li><Link href="/forums" className="hover:text-slate-300 transition-colors">Forums</Link></li>
-                <li><Link href="/rights" className="hover:text-slate-300 transition-colors">Rights</Link></li>
+                <li><Link href="/intel/companies" className="hover:text-slate-300 transition-colors">Companies</Link></li>
+                <li><Link href="/intel/pay" className="hover:text-slate-300 transition-colors">Pay Data</Link></li>
+                <li><Link href="/community/forums" className="hover:text-slate-300 transition-colors">Forums</Link></li>
+                <li><Link href="/welfare/rights" className="hover:text-slate-300 transition-colors">Rights</Link></li>
               </ul>
             </div>
 
@@ -355,9 +355,9 @@ export default function LandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-slate-300 mb-3">Resources</h4>
               <ul className="space-y-2 text-sm text-slate-500">
-                <li><Link href="/rights" className="hover:text-slate-300 transition-colors">MLC Guide</Link></li>
-                <li><Link href="/rights" className="hover:text-slate-300 transition-colors">Emergency Contacts</Link></li>
-                <li><Link href="/rights" className="hover:text-slate-300 transition-colors">Contract Check</Link></li>
+                <li><Link href="/welfare/rights" className="hover:text-slate-300 transition-colors">MLC Guide</Link></li>
+                <li><Link href="/welfare/rights" className="hover:text-slate-300 transition-colors">Emergency Contacts</Link></li>
+                <li><Link href="/career/contract-check" className="hover:text-slate-300 transition-colors">Contract Check</Link></li>
               </ul>
             </div>
 

@@ -36,7 +36,7 @@ export default function AdminVerifyPage() {
         .single();
 
       if (!myProfile || !myProfile.is_verified) {
-        router.push("/dashboard");
+        router.push("/home");
         return;
       }
 
@@ -102,7 +102,7 @@ export default function AdminVerifyPage() {
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Link
-          href="/dashboard"
+          href="/home"
           className="text-slate-400 hover:text-teal-400 transition-colors text-sm"
         >
           &larr; Dashboard

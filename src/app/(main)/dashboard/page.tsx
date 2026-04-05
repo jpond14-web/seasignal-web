@@ -88,7 +88,7 @@ export default function DashboardPage() {
           title: `Your ${cert.title} ${isExpired ? 'has expired' : 'is expiring soon'}`,
           description: daysText || (isExpired ? 'Certificate expired' : 'Certificate expiring'),
           timestamp: cert.updated_at,
-          href: '/certs',
+          href: '/career/certs',
           borderClass: isExpired ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-amber-500',
         });
       }
@@ -171,7 +171,7 @@ export default function DashboardPage() {
                 title: post.title || 'New discussion',
                 description: `New discussion in ${cat?.name || 'forum'}`,
                 timestamp: post.created_at,
-                href: `/forums/post/${post.id}`,
+                href: `/community/forums/post/${post.id}`,
                 borderClass: '',
               });
             }
@@ -218,7 +218,7 @@ export default function DashboardPage() {
               title: `New ${review.review_type} review`,
               description: `Recent review on ${company?.name || 'a company from your history'}`,
               timestamp: review.created_at,
-              href: `/companies/${review.company_id}`,
+              href: `/intel/companies/${review.company_id}`,
               borderClass: '',
             });
           }
@@ -249,7 +249,7 @@ export default function DashboardPage() {
             title: `Pay report: ${report.rank} on ${report.vessel_type?.replace(/_/g, ' ')}`,
             description: `$${Number(report.monthly_base_usd || 0).toLocaleString()}/mo (${report.year})`,
             timestamp: report.created_at,
-            href: '/pay',
+            href: '/intel/pay',
             borderClass: '',
           });
         }
@@ -516,25 +516,25 @@ export default function DashboardPage() {
               completed={onboarding.hasCerts}
               title="Add your certificates"
               description="Track expiry dates and get timely alerts"
-              href="/certs"
+              href="/career/certs"
             />
             <OnboardingItem
               completed={onboarding.hasSeaTime}
               title="Log your sea time"
               description="Build your career record and track STCW progress"
-              href="/sea-time"
+              href="/career/sea-time"
             />
             <OnboardingItem
               completed={onboarding.hasCompanyFollows}
               title="Browse companies"
               description="Follow companies you've worked with"
-              href="/companies"
+              href="/intel/companies"
             />
             <OnboardingItem
               completed={false}
               title="Join the forums"
               description="Connect with fellow seafarers"
-              href="/forums"
+              href="/community/forums"
             />
           </div>
         </div>
@@ -577,12 +577,12 @@ export default function DashboardPage() {
         <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <QuickAction href="/reviews/new" label="Write Review" />
-          <QuickAction href="/pay" label="Check Pay Data" />
-          <QuickAction href="/companies" label="Browse Companies" />
-          <QuickAction href="/forums" label="Visit Forums" />
-          <QuickAction href="/certs" label="Manage Certs" />
-          <QuickAction href="/vessels" label="Browse Vessels" />
-          <QuickAction href="/incidents" label="Log Incident" />
+          <QuickAction href="/intel/pay" label="Check Pay Data" />
+          <QuickAction href="/intel/companies" label="Browse Companies" />
+          <QuickAction href="/community/forums" label="Visit Forums" />
+          <QuickAction href="/career/certs" label="Manage Certs" />
+          <QuickAction href="/intel/vessels" label="Browse Vessels" />
+          <QuickAction href="/welfare/incidents" label="Log Incident" />
           <QuickAction href="/messages" label="Messages" />
         </div>
       </div>

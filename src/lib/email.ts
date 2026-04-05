@@ -143,7 +143,7 @@ export function certExpiryEmail({
           ${escapeHtml(expiryDate)} — ${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining
         </p>
       </div>
-      <a href="${APP_URL}/certs"
+      <a href="${APP_URL}/career/certs"
          style="display:inline-block;margin-top:12px;padding:10px 20px;background-color:#0d9488;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500">
         View certificates
       </a>

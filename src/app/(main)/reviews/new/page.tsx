@@ -88,7 +88,7 @@ function NewReviewForm() {
     if (insertError) {
       setError(insertError.message);
     } else {
-      router.push("/dashboard");
+      router.push("/home");
     }
   }
 
