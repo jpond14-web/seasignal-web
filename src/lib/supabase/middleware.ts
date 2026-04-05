@@ -59,6 +59,8 @@ export async function updateSession(request: NextRequest) {
     /^\/intel\/agencies/,
     /^\/community\/forums/,
     /^\/community\/seafarers/,
+    /^\/welfare\/emergency/,
+    /^\/welfare\/mental-health/,
   ];
   const isPublicRoute = publicPatterns.some((pattern) => pattern.test(pathname));
   const isAuthRoute =

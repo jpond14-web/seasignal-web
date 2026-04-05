@@ -25,6 +25,16 @@ const experienceBands: { value: Enums<"experience_band">; label: string }[] = [
   { value: "10y_plus", label: "10+ years" },
 ];
 
+const vesselTypes: { value: Enums<"vessel_type">; label: string }[] = [
+  { value: "tanker", label: "Tanker" },
+  { value: "bulk_carrier", label: "Bulk Carrier" },
+  { value: "container", label: "Container" },
+  { value: "general_cargo", label: "General Cargo" },
+  { value: "offshore", label: "Offshore" },
+  { value: "roro", label: "RoRo" },
+  { value: "fishing", label: "Fishing" },
+];
+
 export default function ProfileSetupPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -33,6 +43,7 @@ export default function ProfileSetupPage() {
   const [department, setDepartment] = useState<Enums<"department_type"> | "">("");
   const [rankRange, setRankRange] = useState<Enums<"rank_category"> | "">("");
   const [experienceBand, setExperienceBand] = useState<Enums<"experience_band"> | "">("");
+  const [vesselTypeTags, setVesselTypeTags] = useState<Enums<"vessel_type">[]>([]);
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -64,6 +75,7 @@ export default function ProfileSetupPage() {
       department_tag: department || null,
       rank_range: rankRange || null,
       experience_band: experienceBand || null,
+      vessel_type_tags: vesselTypeTags.length > 0 ? vesselTypeTags : null,
       bio: bio.trim() || null,
     });
 
@@ -161,6 +173,37 @@ export default function ProfileSetupPage() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm text-slate-300 mb-1.5">
+            Vessel Types
+          </label>
+          <p className="text-xs text-slate-500 mb-2">
+            Select all that apply — this helps us match you to relevant channels.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {vesselTypes.map((vt) => (
+              <button
+                key={vt.value}
+                type="button"
+                onClick={() =>
+                  setVesselTypeTags((prev) =>
+                    prev.includes(vt.value)
+                      ? prev.filter((v) => v !== vt.value)
+                      : [...prev, vt.value]
+                  )
+                }
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                  vesselTypeTags.includes(vt.value)
+                    ? "bg-teal-500/15 border-teal-500/40 text-teal-400"
+                    : "bg-navy-800 border-navy-600 text-slate-400 hover:border-navy-500"
+                }`}
+              >
+                {vt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>

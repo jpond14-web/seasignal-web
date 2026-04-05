@@ -29,6 +29,8 @@ const publicPatterns = [
   /^\/intel\/agencies/,
   /^\/community\/forums/,
   /^\/community\/seafarers/,
+  /^\/welfare\/emergency/,
+  /^\/welfare\/mental-health/,
 ]
 
 function isPublicRoute(pathname: string): boolean {
@@ -72,6 +74,9 @@ describe('middleware public route patterns', () => {
       '/community/forums/general',
       '/community/seafarers',
       '/community/seafarers/some-user',
+      // Welfare pages accessible without login (crisis resources)
+      '/welfare/emergency',
+      '/welfare/mental-health',
     ]
 
     for (const route of publicRoutes) {
@@ -97,8 +102,6 @@ describe('middleware public route patterns', () => {
       '/intel/guides',
       '/welfare/incidents',
       '/welfare/rights',
-      '/welfare/emergency',
-      '/welfare/mental-health',
       '/welfare/mlc',
       '/admin',
       '/admin/users',
