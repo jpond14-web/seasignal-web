@@ -39,12 +39,19 @@ export type ConversationWithMeta = {
   name: string | null;
   description: string | null;
   context_port: string | null;
+  context_vessel_id: string | null;
+  context_company_id: string | null;
   updated_at: string;
+  created_at: string;
   is_encrypted: boolean | null;
+  is_system: boolean | null;
   last_message_preview: string | null;
   last_message_at: string | null;
   created_by: string | null;
   max_members: number | null;
+  access_mode: string | null;
+  category_id: string | null;
+  sort_order: number | null;
   is_pinned?: boolean;
   is_archived?: boolean;
   is_muted?: boolean;
@@ -53,6 +60,18 @@ export type ConversationWithMeta = {
   dm_partner_name?: string;
   dm_partner_online?: boolean;
   member_count?: number;
+  category_slug?: string;
+  category_name?: string;
+  category_icon?: string;
+  sector_tags?: string[];
+  department_tags?: string[];
+  rank_tags?: string[];
+  region_tag?: string;
+  country_code?: string;
+  slug?: string;
+  last_activity_at?: string;
+  auto_joinable?: boolean;
+  is_featured?: boolean;
 };
 
 export type FoundUser = {

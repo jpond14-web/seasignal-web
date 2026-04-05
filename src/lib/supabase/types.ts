@@ -117,6 +117,36 @@ export type Database = {
           },
         ]
       }
+      channel_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          slug: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           avg_rating: number | null
@@ -256,61 +286,110 @@ export type Database = {
         Row: {
           access_mode: string | null
           auto_expire_hours: number | null
+          auto_joinable: boolean | null
+          category_id: string | null
           context_company_id: string | null
           context_port: string | null
           context_vessel_id: string | null
+          country_code: string | null
           created_at: string
           created_by: string | null
+          department_tags:
+            | Database["public"]["Enums"]["department_type"][]
+            | null
           description: string | null
           id: string
           is_encrypted: boolean | null
+          is_featured: boolean | null
           is_system: boolean | null
+          last_activity_at: string | null
           last_message_at: string | null
           last_message_preview: string | null
           max_members: number | null
+          member_count: number | null
           name: string | null
+          rank_tags: Database["public"]["Enums"]["rank_category"][] | null
+          region_tag: string | null
+          sector_tags: Database["public"]["Enums"]["vessel_type"][] | null
+          slug: string | null
+          sort_order: number | null
           type: Database["public"]["Enums"]["conversation_type"]
           updated_at: string
         }
         Insert: {
           access_mode?: string | null
           auto_expire_hours?: number | null
+          auto_joinable?: boolean | null
+          category_id?: string | null
           context_company_id?: string | null
           context_port?: string | null
           context_vessel_id?: string | null
+          country_code?: string | null
           created_at?: string | null
           created_by?: string | null
+          department_tags?:
+            | Database["public"]["Enums"]["department_type"][]
+            | null
           description?: string | null
           id?: string
           is_encrypted?: boolean | null
+          is_featured?: boolean | null
           is_system?: boolean | null
+          last_activity_at?: string | null
           last_message_at?: string | null
           last_message_preview?: string | null
           max_members?: number | null
+          member_count?: number | null
           name?: string | null
+          rank_tags?: Database["public"]["Enums"]["rank_category"][] | null
+          region_tag?: string | null
+          sector_tags?: Database["public"]["Enums"]["vessel_type"][] | null
+          slug?: string | null
+          sort_order?: number | null
           type: Database["public"]["Enums"]["conversation_type"]
           updated_at?: string | null
         }
         Update: {
           access_mode?: string | null
           auto_expire_hours?: number | null
+          auto_joinable?: boolean | null
+          category_id?: string | null
           context_company_id?: string | null
           context_port?: string | null
           context_vessel_id?: string | null
+          country_code?: string | null
           created_at?: string | null
           created_by?: string | null
+          department_tags?:
+            | Database["public"]["Enums"]["department_type"][]
+            | null
           description?: string | null
           id?: string
           is_encrypted?: boolean | null
+          is_featured?: boolean | null
           is_system?: boolean | null
+          last_activity_at?: string | null
           last_message_at?: string | null
           last_message_preview?: string | null
           max_members?: number | null
+          member_count?: number | null
           name?: string | null
+          rank_tags?: Database["public"]["Enums"]["rank_category"][] | null
+          region_tag?: string | null
+          sector_tags?: Database["public"]["Enums"]["vessel_type"][] | null
+          slug?: string | null
+          sort_order?: number | null
           type?: Database["public"]["Enums"]["conversation_type"]
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conversations_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "channel_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversations_context_company_id_fkey"
             columns: ["context_company_id"]

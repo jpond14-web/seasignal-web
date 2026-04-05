@@ -1,12 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { ConversationWithMeta, ConversationType, FoundUser, DepartmentType, RankCategory, VesselType } from "@/components/messages/types";
 import ConversationItem from "@/components/messages/ConversationItem";
 import NewConversationPanel from "@/components/messages/NewConversationPanel";
 import ChannelBrowserPanel from "@/components/messages/ChannelBrowserPanel";
+
+type ChannelCategory = {
+  id: string;
+  slug: string;
+  name: string;
+  icon: string | null;
+  sort_order: number | null;
+};
+
+type UserProfile = {
+  department_tag: DepartmentType | null;
+  vessel_type_tags: VesselType[] | null;
+  rank_range: RankCategory | null;
+};
 
 type Tab = "direct" | "channels";
 
@@ -27,6 +41,8 @@ export default function MessagesPage() {
   const router = useRouter();
   const [conversations, setConversations] = useState<ConversationWithMeta[]>([]);
   const [allChannels, setAllChannels] = useState<ConversationWithMeta[]>([]);
+  const [channelCategories, setChannelCategories] = useState<ChannelCategory[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("direct");
@@ -54,7 +70,6 @@ export default function MessagesPage() {
   const [newChannelType, setNewChannelType] = useState<ConversationType>("channel");
   const [creatingChannel, setCreatingChannel] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
-  const [channelSearch, setChannelSearch] = useState("");
 
   // Heartbeat: update last_seen_at
   useEffect(() => {
@@ -89,9 +104,14 @@ export default function MessagesPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data: profile } = await supabase.from("profiles").select("id").eq("auth_user_id", user.id).single();
+    const { data: profile } = await supabase.from("profiles").select("id, department_tag, vessel_type_tags, rank_range").eq("auth_user_id", user.id).single();
     if (!profile) return;
     setProfileId(profile.id);
+    setUserProfile({
+      department_tag: profile.department_tag,
+      vessel_type_tags: profile.vessel_type_tags,
+      rank_range: profile.rank_range,
+    });
 
     // Get user's memberships with pin/archive state
     const { data: memberships } = await supabase
@@ -100,23 +120,39 @@ export default function MessagesPage() {
       .eq("profile_id", profile.id);
 
     if (!memberships || memberships.length === 0) {
-      // Auto-join system channels for new users
-      const { data: systemChannels } = await supabase
+      // Auto-join: system channels + auto_joinable channels matching user profile
+      const { data: autoChannels } = await supabase
         .from("conversations")
-        .select("id")
-        .eq("is_system", true);
+        .select("id, is_system, auto_joinable, sector_tags, department_tags, rank_tags")
+        .in("type", CHANNEL_TYPES)
+        .or("is_system.eq.true,auto_joinable.eq.true");
 
-      if (systemChannels && systemChannels.length > 0) {
-        const joins = systemChannels.map(ch => ({
-          conversation_id: ch.id,
-          profile_id: profile.id,
-          role: "member" as const,
-        }));
-        await supabase.from("conversation_members").insert(joins);
-        // Reload after auto-joining
-        setLoading(false);
-        load();
-        return;
+      if (autoChannels && autoChannels.length > 0) {
+        const matched = autoChannels.filter(ch => {
+          // Always auto-join system channels
+          if (ch.is_system) return true;
+          if (!ch.auto_joinable) return false;
+          // Check profile overlap for auto_joinable channels
+          const sectorMatch = !ch.sector_tags || ch.sector_tags.length === 0 ||
+            (profile.vessel_type_tags && ch.sector_tags.some((t: string) => (profile.vessel_type_tags as string[])?.includes(t)));
+          const deptMatch = !ch.department_tags || ch.department_tags.length === 0 ||
+            (profile.department_tag && (ch.department_tags as string[]).includes(profile.department_tag));
+          const rankMatch = !ch.rank_tags || ch.rank_tags.length === 0 ||
+            (profile.rank_range && (ch.rank_tags as string[]).includes(profile.rank_range));
+          return sectorMatch && deptMatch && rankMatch;
+        }).slice(0, 12); // Cap at 12 auto-joins
+
+        if (matched.length > 0) {
+          const joins = matched.map(ch => ({
+            conversation_id: ch.id,
+            profile_id: profile.id,
+            role: "member" as const,
+          }));
+          await supabase.from("conversation_members").insert(joins);
+          setLoading(false);
+          load();
+          return;
+        }
       }
       setLoading(false);
       return;
@@ -201,7 +237,7 @@ export default function MessagesPage() {
     }
 
     // --- Assemble enriched conversations ---
-    const enriched: ConversationWithMeta[] = convos.map(c => {
+    const enriched = convos.map(c => {
       const membership = membershipMap.get(c.id);
       const partnerId = dmPartnerIdMap.get(c.id);
       const partner = partnerId ? partnerProfileMap.get(partnerId) : undefined;
@@ -219,43 +255,45 @@ export default function MessagesPage() {
       };
     });
 
-    setConversations(enriched);
+    setConversations(enriched as ConversationWithMeta[]);
     setLoading(false);
   }, [supabase]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Load browseable channels
+  // Load browseable channels (also loads categories)
   useEffect(() => {
-    if (tab === "channels") loadChannels();
+    loadChannels();
   }, [tab]);
 
   async function loadChannels() {
+    // Load channel categories
+    const { data: categories } = await supabase
+      .from("channel_categories")
+      .select("*")
+      .order("sort_order", { ascending: true });
+
+    if (categories) setChannelCategories(categories);
+
+    // Load channels with category info via JOIN
     const { data } = await supabase
       .from("conversations")
-      .select("*")
+      .select("*, channel_categories!category_id(slug, name, icon)")
       .in("type", CHANNEL_TYPES)
-      .order("updated_at", { ascending: false });
+      .order("member_count", { ascending: false });
 
     if (!data) { setAllChannels([]); return; }
 
-    const channelIds = data.map(c => c.id);
-    const { data: memberRows } = await supabase
-      .from("conversation_members")
-      .select("conversation_id")
-      .in("conversation_id", channelIds);
-
-    const countMap = new Map<string, number>();
-    if (memberRows) {
-      for (const m of memberRows) {
-        countMap.set(m.conversation_id, (countMap.get(m.conversation_id) || 0) + 1);
-      }
-    }
-
-    const enriched = data.map(c => ({
-      ...c,
-      member_count: countMap.get(c.id) || 0,
-    }));
+    const enriched = data.map(c => {
+      const cat = (c as Record<string, unknown>).channel_categories as { slug: string; name: string; icon: string | null } | null;
+      return {
+        ...c,
+        category_slug: cat?.slug || undefined,
+        category_name: cat?.name || undefined,
+        category_icon: cat?.icon || undefined,
+        member_count: c.member_count || 0,
+      };
+    });
 
     setAllChannels(enriched as ConversationWithMeta[]);
   }
@@ -459,6 +497,42 @@ export default function MessagesPage() {
   const joinedChannelIds = new Set(conversations.filter(c => isChannel(c.type)).map(c => c.id));
   const unjoinedChannels = allChannels.filter(c => !joinedChannelIds.has(c.id));
 
+  // Enrich joined channels with category info from allChannels
+  const myChannels = useMemo(() => {
+    const categoryMap = new Map(allChannels.map(ch => [ch.id, { slug: ch.category_slug, name: ch.category_name, icon: ch.category_icon }]));
+    return conversations.filter(c => isChannel(c.type)).map(c => ({
+      ...c,
+      category_slug: c.category_slug || categoryMap.get(c.id)?.slug,
+      category_name: c.category_name || categoryMap.get(c.id)?.name,
+      category_icon: c.category_icon || categoryMap.get(c.id)?.icon,
+    }));
+  }, [conversations, allChannels]);
+
+  // Group joined channels by category for the sidebar
+  const categoryOrder = useMemo(() => channelCategories.map(c => c.slug), [channelCategories]);
+  const groupedChannels = useMemo(() => {
+    const groups: Record<string, ConversationWithMeta[]> = {};
+    for (const ch of myChannels.filter(c => !c.is_archived)) {
+      const key = ch.category_slug || "other";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(ch);
+    }
+    // Sort groups by category order
+    const ordered: { slug: string; name: string; icon: string | null; channels: ConversationWithMeta[] }[] = [];
+    for (const slug of categoryOrder) {
+      if (groups[slug]) {
+        const cat = channelCategories.find(c => c.slug === slug);
+        ordered.push({ slug, name: cat?.name || slug, icon: cat?.icon || null, channels: groups[slug] });
+        delete groups[slug];
+      }
+    }
+    // Add remaining groups not in category order
+    for (const [slug, channels] of Object.entries(groups)) {
+      ordered.push({ slug, name: slug === "other" ? "Other" : slug, icon: null, channels });
+    }
+    return ordered;
+  }, [myChannels, categoryOrder, channelCategories]);
+
   function renderSection(title: string, items: ConversationWithMeta[]) {
     if (items.length === 0) return null;
     return (
@@ -561,9 +635,10 @@ export default function MessagesPage() {
           joinError={joinError}
           onDismissJoinError={() => setJoinError(null)}
           unjoinedChannels={unjoinedChannels}
-          channelSearch={channelSearch}
-          onChannelSearchChange={setChannelSearch}
           onJoinChannel={joinChannel}
+          categories={channelCategories}
+          joinedChannelIds={joinedChannelIds}
+          userProfile={userProfile}
         />
       )}
 
@@ -614,6 +689,69 @@ export default function MessagesPage() {
             </div>
           )}
         </div>
+      ) : tab === "channels" ? (
+        <>
+          {/* Pinned channels always at top */}
+          {pinnedConvos.length > 0 && renderSection("Pinned", pinnedConvos)}
+
+          {/* Grouped by category */}
+          {groupedChannels.map(({ slug, name, icon, channels }) => {
+            const unpinned = channels.filter(c => !c.is_pinned);
+            if (unpinned.length === 0) return null;
+            return (
+              <div key={slug} className="mb-4">
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  {icon && <span className="text-sm">{icon}</span>}
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{name}</p>
+                  <span className="text-[10px] text-slate-600">({unpinned.length})</span>
+                  <div className="flex-1 border-t border-navy-700/50" />
+                </div>
+                <div className="space-y-1.5">
+                  {unpinned.map(c => (
+                    <ConversationItem
+                      key={c.id}
+                      conversation={c}
+                      isActionsOpen={openActionsId === c.id}
+                      onToggleActions={setOpenActionsId}
+                      onTogglePin={togglePin}
+                      onToggleMute={toggleMute}
+                      onToggleArchive={toggleArchive}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {archivedConvos.length > 0 && (
+            <div className="mt-4">
+              <button
+                onClick={() => setShowArchived(!showArchived)}
+                className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-400 transition-colors mb-2 px-1"
+              >
+                <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor" className={`transition-transform ${showArchived ? "rotate-90" : ""}`}>
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+                Archived ({archivedConvos.length})
+              </button>
+              {showArchived && (
+                <div className="space-y-1.5 opacity-60">
+                  {archivedConvos.map(c => (
+                    <ConversationItem
+                      key={c.id}
+                      conversation={c}
+                      isActionsOpen={openActionsId === c.id}
+                      onToggleActions={setOpenActionsId}
+                      onTogglePin={togglePin}
+                      onToggleMute={toggleMute}
+                      onToggleArchive={toggleArchive}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <>
           {renderSection("Pinned", pinnedConvos)}
