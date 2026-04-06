@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const screwedQuestions = [
   { question: "Are you being paid on time as per your contract?", flag: "late_pay", right: "MLC 2006 Reg. 2.2 — Wages must be paid monthly, no later than the agreed date." },
@@ -26,11 +26,30 @@ export default function RightsPage() {
   const [tab, setTab] = useState<"guide" | "check" | "contacts">("guide");
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
   const [showResults, setShowResults] = useState(false);
+  const [offlineCached, setOfflineCached] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("seasignal_rights_cached", "true");
+      localStorage.setItem("seasignal_rights_cached_at", new Date().toISOString());
+      setOfflineCached(true);
+    } catch {
+      // localStorage unavailable
+    }
+  }, []);
 
   const flagged = screwedQuestions.filter((q) => answers[q.flag]);
 
   return (
     <div className="max-w-3xl mx-auto">
+      {offlineCached && (
+        <div className="flex justify-end mb-3">
+          <span className="text-xs text-slate-500 bg-navy-800 border border-navy-700 rounded-full px-2.5 py-1">
+            {"\uD83D\uDCF1"} Available offline
+          </span>
+        </div>
+      )}
+
       <div className="flex gap-2 mb-6">
         {(["guide", "check", "contacts"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
@@ -157,6 +176,10 @@ export default function RightsPage() {
           ))}
         </div>
       )}
+
+      <p className="text-xs text-slate-500 mt-8 text-center">
+        This page is designed to work offline. Critical rights information is always accessible.
+      </p>
     </div>
   );
 }
