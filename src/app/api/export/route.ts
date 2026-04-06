@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, rateLimitKey } from "@/lib/rateLimit";
 
 const APP_VERSION = "0.1.0";
 
@@ -29,6 +30,14 @@ function toCsv(rows: Record<string, unknown>[]): string {
 }
 
 export async function GET(request: NextRequest) {
+  const rl = checkRateLimit(rateLimitKey(request, "export"), { limit: 5, windowSeconds: 60 });
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { "Content-Type": "application/json", ...rl.headers },
+    });
+  }
+
   const supabase = await createClient();
 
   const {

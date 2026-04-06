@@ -5,6 +5,7 @@ import {
   certExpiryEmail,
   escapeHtml,
 } from "@/lib/email";
+import { checkRateLimit, rateLimitKey } from "@/lib/rateLimit";
 
 type NotificationType = "cert_expiry" | "message" | "review";
 
@@ -25,6 +26,11 @@ const NOTIFICATION_PREF_MAP: Record<NotificationType, string> = {
 };
 
 export async function POST(request: Request) {
+  const rl = checkRateLimit(rateLimitKey(request, "notifications"), { limit: 20, windowSeconds: 60 });
+  if (!rl.allowed) {
+    return Response.json({ error: "Too many requests" }, { status: 429, headers: rl.headers });
+  }
+
   const supabase = await createClient();
 
   // Authenticate

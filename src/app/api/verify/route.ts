@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, rateLimitKey } from "@/lib/rateLimit";
 
 const CERT_TYPE_TO_SETTING: Record<string, string> = {
   coc: "allow_coc_verification",
@@ -19,16 +20,15 @@ function computeExpiryStatus(expiryDate: string | null): string {
   return "valid";
 }
 
-function rateLimitHeaders() {
-  return {
-    "X-RateLimit-Limit": "60",
-    "X-RateLimit-Remaining": "59",
-    "X-RateLimit-Reset": String(Math.floor(Date.now() / 1000) + 60),
-  };
-}
-
 export async function POST(request: Request) {
-  const headers = rateLimitHeaders();
+  const rl = checkRateLimit(rateLimitKey(request, "verify"), { limit: 30, windowSeconds: 60 });
+  if (!rl.allowed) {
+    return Response.json(
+      { error: "Too many requests", verified: false },
+      { status: 429, headers: rl.headers }
+    );
+  }
+  const headers = rl.headers;
 
   // Parse request body
   let body: { platform_token?: string; cert_type?: string };

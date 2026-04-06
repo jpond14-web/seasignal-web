@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, rateLimitKey } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
+  const rl = checkRateLimit(rateLimitKey(request, "join"), { limit: 30, windowSeconds: 60 });
+  if (!rl.allowed) {
+    return Response.json({ error: "Too many requests" }, { status: 429, headers: rl.headers });
+  }
+
   const supabase = await createClient();
 
   const {

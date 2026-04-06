@@ -1,11 +1,4 @@
-/**
- * Lightweight error reporting utility.
- *
- * In production, replace the body of `reportError` with your preferred
- * service (Sentry, LogRocket, Datadog, etc.). For now, errors are logged
- * to the console with structured context so they can be found in server
- * logs / browser devtools.
- */
+import * as Sentry from "@sentry/nextjs";
 
 interface ErrorContext {
   /** Where the error occurred (e.g. "pushSubscription.subscribe") */
@@ -19,7 +12,7 @@ export function reportError(error: unknown, context: ErrorContext): void {
     error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
 
-  // Structured log — easily parseable in log aggregators
+  // Structured log for log aggregators
   console.error(
     JSON.stringify({
       level: "error",
@@ -31,6 +24,9 @@ export function reportError(error: unknown, context: ErrorContext): void {
     })
   );
 
-  // When Sentry is configured, uncomment:
-  // Sentry.captureException(error, { tags: { source: context.source }, extra: context.meta });
+  // Send to Sentry
+  Sentry.captureException(error instanceof Error ? error : new Error(message), {
+    tags: { source: context.source },
+    extra: context.meta,
+  });
 }
