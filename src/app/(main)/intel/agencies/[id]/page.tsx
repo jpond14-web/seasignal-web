@@ -2,17 +2,40 @@ import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: agency } = await supabase
+    .from("companies")
+    .select("name, avg_rating, review_count, country")
+    .eq("id", id)
+    .eq("company_type", "manning_agency")
+    .single();
+
+  if (!agency) return { title: "Agency Not Found | SeaSignal" };
+
+  const ratingText = agency.avg_rating
+    ? ` Rated ${Number(agency.avg_rating).toFixed(1)}/5 from ${agency.review_count} review${agency.review_count !== 1 ? "s" : ""}.`
+    : "";
+
+  return {
+    title: `${agency.name} Manning Agency Reviews | SeaSignal`,
+    description: `Seafarer reviews for ${agency.name}${agency.country ? ` (${agency.country})` : ""}.${ratingText} See pay reliability, hidden fees, and deployment delay reports on SeaSignal.`,
+  };
+}
 
 function formatEnum(val: string | null): string {
   if (!val) return "";
   return val.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default async function AgencyDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function AgencyDetailPage({ params }: Props) {
   const { id } = await params;
   const supabase = await createClient();
 

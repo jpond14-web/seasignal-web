@@ -29,6 +29,24 @@ export default function VesselsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("");
+  const [flagFilter, setFlagFilter] = useState<string>("");
+  const [flagStates, setFlagStates] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Load distinct flag states for filter dropdown
+    async function loadFlags() {
+      const { data } = await supabase
+        .from("vessels")
+        .select("flag_state")
+        .not("flag_state", "is", null)
+        .order("flag_state");
+      if (data) {
+        const unique = [...new Set(data.map((v) => v.flag_state).filter(Boolean))] as string[];
+        setFlagStates(unique);
+      }
+    }
+    loadFlags();
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -39,6 +57,9 @@ export default function VesselsPage() {
 
       if (typeFilter) {
         query = query.eq("vessel_type", typeFilter as Enums<"vessel_type">);
+      }
+      if (flagFilter) {
+        query = query.eq("flag_state", flagFilter);
       }
       if (search) {
         query = query.or(`name.ilike.%${search}%,imo_number.ilike.%${search}%`);
@@ -54,7 +75,7 @@ export default function VesselsPage() {
       }
     }
     load();
-  }, [search, typeFilter]);
+  }, [search, typeFilter, flagFilter]);
 
   function formatEnum(val: string): string {
     return val.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -80,6 +101,17 @@ export default function VesselsPage() {
           <option value="">All Types</option>
           {vesselTypes.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+        <select
+          value={flagFilter}
+          onChange={(e) => setFlagFilter(e.target.value)}
+          aria-label="Filter by flag state"
+          className="px-3 py-2.5 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none"
+        >
+          <option value="">All Flags</option>
+          {flagStates.map((f) => (
+            <option key={f} value={f}>{f}</option>
           ))}
         </select>
       </div>

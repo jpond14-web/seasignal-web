@@ -1,17 +1,39 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: vessel } = await supabase
+    .from("vessels")
+    .select("name, imo_number, vessel_type, avg_rating, review_count")
+    .eq("id", id)
+    .single();
+
+  if (!vessel) return { title: "Vessel Not Found | SeaSignal" };
+
+  const ratingText = vessel.avg_rating
+    ? ` Rated ${Number(vessel.avg_rating).toFixed(1)}/5 from ${vessel.review_count} review${vessel.review_count !== 1 ? "s" : ""}.`
+    : "";
+
+  return {
+    title: `${vessel.name} (IMO ${vessel.imo_number}) Reviews | SeaSignal`,
+    description: `Seafarer reviews for ${vessel.name}, ${formatEnum(vessel.vessel_type)}.${ratingText} See crew safety, conditions, and management ratings on SeaSignal.`,
+  };
+}
 
 function formatEnum(val: string | null): string {
   if (!val) return "";
   return val.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default async function VesselDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function VesselDetailPage({ params }: Props) {
   const { id } = await params;
   const supabase = await createClient();
 
@@ -24,7 +46,7 @@ export default async function VesselDetailPage({
   if (!vessel) return notFound();
 
   // Fetch linked companies
-  const companyIds = [vessel.owner_company_id, vessel.operator_company_id, vessel.manager_company_id].filter((id): id is string => id !== null);
+  const companyIds = [vessel.owner_company_id, vessel.operator_company_id, vessel.manager_company_id].filter((cid): cid is string => cid !== null);
   let companies: Record<string, { id: string; name: string }> = {};
   if (companyIds.length > 0) {
     const { data } = await supabase
@@ -43,11 +65,38 @@ export default async function VesselDetailPage({
     .eq("status", "published")
     .order("created_at", { ascending: false });
 
+  // Witness Network: check for safety signals
+  const { data: safetySignalRaw } = await supabase.rpc("check_vessel_safety_signals", {
+    p_vessel_id: id,
+    p_months_back: 12,
+  });
+
+  const safetySignal = safetySignalRaw as { has_pattern?: boolean } | null;
+  const hasPattern = safetySignal?.has_pattern === true;
+
   return (
     <div className="max-w-4xl mx-auto">
       <Link href="/intel/vessels" className="text-sm text-slate-400 hover:text-slate-300 mb-4 inline-block">
         &larr; Vessels
       </Link>
+
+      {/* Safety Signal Banner */}
+      {hasPattern && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-red-400">Safety Signals Detected</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Multiple verified crew members have reported safety concerns about this vessel
+                in the past 12 months. Your identity is never revealed in these signals.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-navy-900 border border-navy-700 rounded-lg p-6 mb-6">
         <div className="flex items-start justify-between">

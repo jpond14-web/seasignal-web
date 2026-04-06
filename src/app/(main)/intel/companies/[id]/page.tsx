@@ -165,6 +165,44 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
             value={company.contract_accuracy_score}
           />
         </div>
+
+        {company.pattern_flags && (() => {
+          const flags = company.pattern_flags as Record<string, unknown>;
+          const hasFlags = Boolean(flags.bait_and_switch || flags.hidden_fees || flags.deployment_delays || flags.wage_issues || flags.safety_concerns);
+          if (!hasFlags) return null;
+          return (
+            <div className="mt-4 pt-4 border-t border-navy-700">
+              <h3 className="text-sm font-medium text-slate-300 mb-2">Pattern Flags</h3>
+              <div className="flex flex-wrap gap-2">
+                {Boolean(flags.bait_and_switch) && (
+                  <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400">
+                    Bait &amp; Switch Reports
+                  </span>
+                )}
+                {Boolean(flags.hidden_fees) && (
+                  <span className="text-xs px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400">
+                    Hidden Fees Reported
+                  </span>
+                )}
+                {Boolean(flags.deployment_delays) && (
+                  <span className="text-xs px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400">
+                    Deployment Delays
+                  </span>
+                )}
+                {Boolean(flags.wage_issues) && (
+                  <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400">
+                    Wage Issues
+                  </span>
+                )}
+                {Boolean(flags.safety_concerns) && (
+                  <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400">
+                    Safety Concerns
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="flex gap-3 mb-6">
