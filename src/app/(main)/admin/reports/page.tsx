@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { logAdminAction } from "@/lib/auditLog";
+import { formatDateTime } from "@/lib/format";
 
 type Report = {
   id: string;
@@ -112,10 +113,15 @@ export default function AdminReportsPage() {
 
   async function dismissReport(reportId: string) {
     setActing(reportId);
-    await supabase
+    const { error } = await supabase
       .from("reported_content")
       .update({ status: "dismissed", reviewed_by: adminProfileId, updated_at: new Date().toISOString() })
       .eq("id", reportId);
+    if (error) {
+      alert("Failed to dismiss report: " + error.message);
+      setActing(null);
+      return;
+    }
     if (adminProfileId) {
       await logAdminAction(adminProfileId, "dismiss_report", "report", reportId);
     }
@@ -133,14 +139,24 @@ export default function AdminReportsPage() {
 
     // Delete the message
     if (report.content_type === "message") {
-      await supabase.from("messages").delete().eq("id", report.content_id);
+      const { error: delError } = await supabase.from("messages").delete().eq("id", report.content_id);
+      if (delError) {
+        alert("Failed to delete message: " + delError.message);
+        setActing(null);
+        return;
+      }
     }
 
     // Resolve the report
-    await supabase
+    const { error: resolveError } = await supabase
       .from("reported_content")
       .update({ status: "resolved", reviewed_by: adminProfileId, updated_at: new Date().toISOString() })
       .eq("id", report.id);
+    if (resolveError) {
+      alert("Failed to resolve report: " + resolveError.message);
+      setActing(null);
+      return;
+    }
 
     if (adminProfileId) {
       await logAdminAction(adminProfileId, "delete_content", "report", report.id, {
@@ -163,16 +179,26 @@ export default function AdminReportsPage() {
     setActing(report.id);
 
     // Set sender's is_verified to false
-    await supabase
+    const { error: banError } = await supabase
       .from("profiles")
       .update({ is_verified: false })
       .eq("id", report.message_sender_id);
+    if (banError) {
+      alert("Failed to ban user: " + banError.message);
+      setActing(null);
+      return;
+    }
 
     // Resolve the report
-    await supabase
+    const { error: resolveError } = await supabase
       .from("reported_content")
       .update({ status: "resolved", reviewed_by: adminProfileId, updated_at: new Date().toISOString() })
       .eq("id", report.id);
+    if (resolveError) {
+      alert("Failed to resolve report: " + resolveError.message);
+      setActing(null);
+      return;
+    }
 
     if (adminProfileId) {
       await logAdminAction(adminProfileId, "ban_user", "user", report.message_sender_id!, {
@@ -294,7 +320,7 @@ export default function AdminReportsPage() {
 
                   {/* Date */}
                   <p className="text-xs text-slate-500 mt-2">
-                    {new Date(report.created_at ?? "").toLocaleString()}
+                    {formatDateTime(new Date(report.created_at ?? ""))}
                   </p>
                 </div>
 

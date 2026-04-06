@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
 
 type VerificationSettings = {
   id: string;
@@ -36,6 +37,7 @@ const CERT_TOGGLES = [
 
 export default function VerificationPage() {
   const supabase = createClient();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
@@ -99,20 +101,26 @@ export default function VerificationPage() {
     if (!settings || !profileId) return;
     setSaving(true);
 
+    const previous = { ...settings };
     const updated = { ...settings, [key]: value };
     setSettings(updated);
 
-    await supabase
+    const { error } = await supabase
       .from("verification_settings")
       .update({ [key]: value })
       .eq("profile_id", profileId);
+
+    if (error) {
+      setSettings(previous);
+      showToast(error.message, "error");
+    }
 
     setSaving(false);
   };
 
   const handleRequest = async (requestId: string, authorize: boolean) => {
     const status = authorize ? "authorized" : "denied";
-    await supabase
+    const { error } = await supabase
       .from("verification_requests")
       .update({
         request_status: status,
@@ -120,6 +128,11 @@ export default function VerificationPage() {
         completed_at: new Date().toISOString(),
       })
       .eq("id", requestId);
+
+    if (error) {
+      showToast(error.message, "error");
+      return;
+    }
 
     setRequests((prev) =>
       prev.map((r) => (r.id === requestId ? { ...r, request_status: status } : r))

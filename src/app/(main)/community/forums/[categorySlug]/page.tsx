@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { formatDate } from "@/lib/format";
 
 type Post = {
   id: string;
@@ -149,7 +150,7 @@ export default function CategoryPage() {
                   <p className="text-sm text-slate-400 mt-0.5 line-clamp-2">{post.body}</p>
                   <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
                     <span>{post.is_anonymous ? "Anonymous" : post.profiles?.display_name || "Unknown"}</span>
-                    <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                    <span>{formatDate(post.created_at)}</span>
                     <span>{post.reply_count} {post.reply_count === 1 ? "reply" : "replies"}</span>
                   </div>
                 </div>

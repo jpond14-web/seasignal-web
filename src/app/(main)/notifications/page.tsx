@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
 import type { Tables } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 type Notification = Tables<"notifications">;
 
@@ -69,10 +71,11 @@ function relativeTime(dateStr: string): string {
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  return formatDate(dateStr);
 }
 
 export default function NotificationsPage() {
+  const { showToast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -102,7 +105,13 @@ export default function NotificationsPage() {
         query = query.eq("type", typeFilter);
       }
 
-      const { data } = await query;
+      const { data, error } = await query;
+
+      if (error) {
+        showToast(error.message, "error");
+        setLoading(false);
+        return;
+      }
 
       if (data) {
         setNotifications((prev) => (replace ? data : [...prev, ...data]));
@@ -120,7 +129,11 @@ export default function NotificationsPage() {
 
   async function handleMarkAsRead(id: string) {
     const supabase = createClient();
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    if (error) {
+      showToast(error.message, "error");
+      return;
+    }
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
@@ -133,18 +146,27 @@ export default function NotificationsPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase
+    const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
       .eq("user_id", user.id)
       .eq("is_read", false);
+
+    if (error) {
+      showToast(error.message, "error");
+      return;
+    }
 
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
   }
 
   async function handleDelete(id: string) {
     const supabase = createClient();
-    await supabase.from("notifications").delete().eq("id", id);
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) {
+      showToast(error.message, "error");
+      return;
+    }
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }
 

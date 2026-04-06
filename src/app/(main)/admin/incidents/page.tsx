@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 type Incident = Tables<"incident_logs">;
 
@@ -71,11 +72,11 @@ export default function AdminIncidentsPage() {
                   <div className="flex items-center gap-3 mt-2">
                     {inc.incident_date && (
                       <p className="text-xs text-slate-500">
-                        Incident date: {new Date(inc.incident_date).toLocaleDateString()}
+                        Incident date: {formatDate(new Date(inc.incident_date))}
                       </p>
                     )}
                     <p className="text-xs text-slate-500">
-                      Reported: {new Date(inc.created_at!).toLocaleDateString()}
+                      Reported: {formatDate(new Date(inc.created_at!))}
                     </p>
                   </div>
                 </div>

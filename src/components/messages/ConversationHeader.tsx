@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { MemberProfile } from "./types";
+import { formatDate } from "@/lib/format";
 
 function isOnline(lastSeen: string | null): boolean {
   if (!lastSeen) return false;
@@ -17,7 +18,7 @@ function formatLastSeen(lastSeen: string | null): string {
   if (diffMins < 60) return `Last seen ${diffMins}m ago`;
   const diffHrs = Math.floor(diffMins / 60);
   if (diffHrs < 24) return `Last seen ${diffHrs}h ago`;
-  return `Last seen ${d.toLocaleDateString()}`;
+  return `Last seen ${formatDate(lastSeen)}`;
 }
 
 type ConversationHeaderProps = {

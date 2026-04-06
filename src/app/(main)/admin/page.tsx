@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { formatDate } from "@/lib/format";
 
 interface Stats {
   totalUsers: number;
@@ -390,7 +391,7 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
               <p className="text-xs text-slate-500 shrink-0 ml-4">
-                {new Date(item.date).toLocaleDateString()}
+                {formatDate(new Date(item.date))}
               </p>
             </div>
           ))}

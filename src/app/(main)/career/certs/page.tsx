@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import { parseCertCsv, type ParsedCertRow } from "@/lib/utils/certCsvParser";
 import type { Tables, Enums } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 const certTypes: { value: Enums<"cert_type">; label: string }[] = [
   { value: "coc", label: "Certificate of Competency" },
@@ -327,18 +328,29 @@ export default function CertsPage() {
         loadFromCache();
         return;
       }
-      const { data: profile } = await supabase.from("profiles").select("id").eq("auth_user_id", user.id).single();
+      const { data: profile, error: profileError } = await supabase.from("profiles").select("id").eq("auth_user_id", user.id).single();
+      if (profileError) {
+        showToast(profileError.message, "error");
+        loadFromCache();
+        return;
+      }
       if (!profile) {
         loadFromCache();
         return;
       }
       setProfileId(profile.id);
 
-      const { data } = await supabase
+      const { data, error: certsError } = await supabase
         .from("certificates")
         .select("*")
         .eq("profile_id", profile.id)
         .order("expiry_date", { ascending: true, nullsFirst: false });
+
+      if (certsError) {
+        showToast(certsError.message, "error");
+        loadFromCache();
+        return;
+      }
 
       const certData = data || [];
       setCerts(certData);
@@ -422,7 +434,11 @@ export default function CertsPage() {
   }
 
   async function handleDelete(id: string) {
-    await supabase.from("certificates").delete().eq("id", id);
+    const { error: deleteError } = await supabase.from("certificates").delete().eq("id", id);
+    if (deleteError) {
+      showToast(deleteError.message, "error");
+      return;
+    }
     loadCerts();
   }
 
@@ -693,8 +709,8 @@ export default function CertsPage() {
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-navy-700/50">
                   <div className="flex gap-3 text-xs text-slate-500">
-                    {cert.issue_date && <span>Issued: {new Date(cert.issue_date).toLocaleDateString()}</span>}
-                    {cert.expiry_date && <span>Expires: {new Date(cert.expiry_date).toLocaleDateString()}</span>}
+                    {cert.issue_date && <span>Issued: {formatDate(cert.issue_date)}</span>}
+                    {cert.expiry_date && <span>Expires: {formatDate(cert.expiry_date)}</span>}
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => startEdit(cert)} className="text-xs text-slate-400 hover:text-teal-400 transition-colors" aria-label={`Edit certificate: ${cert.title}`}>Edit</button>

@@ -61,11 +61,16 @@ export default function FatiguePage() {
       setLoading(false);
       return;
     }
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("id")
       .eq("auth_user_id", user.id)
       .single();
+    if (profileError) {
+      showToast(profileError.message, "error");
+      setLoading(false);
+      return;
+    }
     if (!profile) {
       setLoading(false);
       return;
@@ -75,13 +80,16 @@ export default function FatiguePage() {
     const fourteenDaysAgo = new Date();
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-    const { data } = await supabase
+    const { data, error: assessmentsError } = await supabase
       .from("fatigue_assessments")
       .select("*")
       .eq("profile_id", profile.id)
       .gte("assessment_date", fourteenDaysAgo.toISOString().split("T")[0])
       .order("assessment_date", { ascending: false });
 
+    if (assessmentsError) {
+      showToast(assessmentsError.message, "error");
+    }
     setAssessments((data as FatigueAssessment[]) || []);
     setLoading(false);
   }

@@ -61,6 +61,7 @@ export default function AskFleetPage() {
         if (anyCat) setCategoryId(anyCat.id);
       }
 
+      let resolvedProfileId: string | null = null;
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -70,15 +71,26 @@ export default function AskFleetPage() {
           .select("id")
           .eq("auth_user_id", user.id)
           .single();
-        if (profile) setProfileId(profile.id);
+        if (profile) {
+          setProfileId(profile.id);
+          resolvedProfileId = profile.id;
+        }
       }
 
-      if (cat) {
-        await fetchQuestions(cat.id);
-      } else {
-        // Use fallback cat ID if resolved
-        const fallbackId = categoryId;
-        if (fallbackId) await fetchQuestions(fallbackId);
+      const resolvedCatId = cat?.id || categoryId;
+      if (resolvedCatId) {
+        await fetchQuestions(resolvedCatId);
+      }
+
+      // Load existing votes for this user
+      if (resolvedProfileId) {
+        const { data: existingVotes } = await supabase
+          .from("post_votes")
+          .select("post_id")
+          .eq("profile_id", resolvedProfileId);
+        if (existingVotes) {
+          setUpvotedIds(new Set(existingVotes.map((v) => v.post_id)));
+        }
       }
       setLoading(false);
     })();
@@ -128,8 +140,16 @@ export default function AskFleetPage() {
 
   const handleUpvote = async (postId: string) => {
     if (!profileId) return;
-
     if (upvotedIds.has(postId)) return;
+
+    // Insert vote into post_votes — unique constraint prevents duplicates
+    const { error: voteErr } = await supabase.from("post_votes").insert({
+      post_id: postId,
+      profile_id: profileId,
+      value: 1,
+    });
+
+    if (voteErr) return; // duplicate or other error — silently ignore
 
     // Optimistic update
     setUpvotedIds((prev) => new Set(prev).add(postId));
@@ -140,11 +160,6 @@ export default function AskFleetPage() {
           : q
       )
     );
-
-    await supabase
-      .from("forum_posts")
-      .update({ upvote_count: questions.find((q) => q.id === postId)?.upvote_count ?? 0 + 1 } as never)
-      .eq("id", postId);
   };
 
   const formatTime = (date: string | null) => {

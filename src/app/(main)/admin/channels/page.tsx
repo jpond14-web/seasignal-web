@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { logAdminAction } from "@/lib/auditLog";
+import { formatDate } from "@/lib/format";
 
 type Channel = {
   id: string;
@@ -130,15 +131,30 @@ export default function AdminChannelsPage() {
     setActing(channelId);
 
     // Delete members, messages, then the conversation
-    await supabase
+    const { error: msgErr } = await supabase
       .from("messages")
       .delete()
       .eq("conversation_id", channelId);
-    await supabase
+    if (msgErr) {
+      alert("Failed to delete channel messages: " + msgErr.message);
+      setActing(null);
+      return;
+    }
+    const { error: memErr } = await supabase
       .from("conversation_members")
       .delete()
       .eq("conversation_id", channelId);
-    await supabase.from("conversations").delete().eq("id", channelId);
+    if (memErr) {
+      alert("Failed to delete channel members: " + memErr.message);
+      setActing(null);
+      return;
+    }
+    const { error: convoErr } = await supabase.from("conversations").delete().eq("id", channelId);
+    if (convoErr) {
+      alert("Failed to delete channel: " + convoErr.message);
+      setActing(null);
+      return;
+    }
 
     if (adminProfileId) {
       await logAdminAction(adminProfileId, "delete_channel", "channel", channelId);
@@ -160,7 +176,7 @@ export default function AdminChannelsPage() {
     if (!editingChannel) return;
     setActing(editingChannel.id);
 
-    await supabase
+    const { error } = await supabase
       .from("conversations")
       .update({
         name: editName || null,
@@ -170,6 +186,11 @@ export default function AdminChannelsPage() {
         updated_at: new Date().toISOString(),
       })
       .eq("id", editingChannel.id);
+    if (error) {
+      alert("Failed to save channel: " + error.message);
+      setActing(null);
+      return;
+    }
 
     if (adminProfileId) {
       await logAdminAction(adminProfileId, "edit_channel", "channel", editingChannel.id, {
@@ -222,7 +243,11 @@ export default function AdminChannelsPage() {
     const confirmed = window.confirm("Remove this member from the channel?");
     if (!confirmed) return;
 
-    await supabase.from("conversation_members").delete().eq("id", membershipId);
+    const { error } = await supabase.from("conversation_members").delete().eq("id", membershipId);
+    if (error) {
+      alert("Failed to remove member: " + error.message);
+      return;
+    }
     if (adminProfileId) {
       await logAdminAction(adminProfileId, "kick_member", "channel", channelId, {
         membership_id: membershipId,
@@ -314,7 +339,7 @@ export default function AdminChannelsPage() {
                       </span>
                     )}
                     <span>
-                      {new Date(channel.created_at ?? "").toLocaleDateString()}
+                      {formatDate(new Date(channel.created_at ?? ""))}
                     </span>
                   </div>
                 </div>

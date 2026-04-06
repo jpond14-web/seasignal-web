@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { Message, Reactions, Attachment } from "./types";
+import { formatDateTime } from "@/lib/format";
 
 const REACTION_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🎉"];
 
@@ -111,10 +112,10 @@ export default function MessageBubble({
             <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
               {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               {msg.edited_at && (
-                <span className="ml-1 text-slate-500/70 italic" title={`Edited ${new Date(msg.edited_at).toLocaleString()}`}>(edited)</span>
+                <span className="ml-1 text-slate-500/70 italic" title={`Edited ${formatDateTime(msg.edited_at)}`}>(edited)</span>
               )}
               {msg.expires_at && (
-                <span className="inline-flex items-center gap-0.5 ml-1 text-amber-400/70" title={`Expires ${new Date(msg.expires_at).toLocaleString()}`}>
+                <span className="inline-flex items-center gap-0.5 ml-1 text-amber-400/70" title={`Expires ${formatDateTime(msg.expires_at)}`}>
                   <svg className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                   </svg>

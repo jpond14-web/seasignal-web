@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { formatDateTime } from "@/lib/format";
 
 type AuditEntry = {
   id: string;
@@ -152,7 +153,7 @@ export default function AdminAuditPage() {
                     className="border-b border-navy-700/50 bg-navy-900 hover:bg-navy-800/50 transition-colors"
                   >
                     <td className="px-4 py-3 text-slate-300 text-xs whitespace-nowrap">
-                      {new Date(entry.created_at ?? "").toLocaleString()}
+                      {formatDateTime(new Date(entry.created_at ?? ""))}
                     </td>
                     <td className="px-4 py-3 text-slate-200 font-medium">
                       {entry.admin_name}

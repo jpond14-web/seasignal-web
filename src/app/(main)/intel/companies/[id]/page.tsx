@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { FollowButton } from "./follow-button";
+import { formatDate } from "@/lib/format";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -253,7 +254,7 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
                     {r.is_anonymous ? "Anonymous" : "Seafarer"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {new Date(r.created_at ?? "").toLocaleDateString()}
+                    {formatDate(r.created_at)}
                   </p>
                 </div>
                 {r.contract_period && (

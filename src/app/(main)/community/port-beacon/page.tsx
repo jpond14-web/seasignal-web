@@ -23,12 +23,19 @@ export default function PortBeaconPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchChannels = useCallback(async () => {
-    const { data } = await supabase
+    // Only show port channels with activity in the last 72 hours
+    const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+    const { data, error: fetchErr } = await supabase
       .from("conversations")
       .select("*")
       .eq("type", "port_channel")
+      .or(`last_activity_at.gte.${cutoff},last_activity_at.is.null`)
       .order("last_activity_at", { ascending: false, nullsFirst: false });
-    if (data) setChannels(data as PortChannel[]);
+    if (fetchErr) {
+      setError(fetchErr.message);
+    } else if (data) {
+      setChannels(data as PortChannel[]);
+    }
     setLoading(false);
   }, [supabase]);
 
@@ -72,7 +79,7 @@ export default function PortBeaconPage() {
 
     if (existing) {
       // Join existing channel
-      await supabase.from("conversation_members").upsert(
+      const { error: joinErr } = await supabase.from("conversation_members").upsert(
         {
           conversation_id: existing.id,
           profile_id: profileId,
@@ -80,6 +87,9 @@ export default function PortBeaconPage() {
         },
         { onConflict: "conversation_id,profile_id" }
       );
+      if (joinErr) {
+        setError(joinErr.message);
+      }
       setCreating(false);
       setShowCreate(false);
       setPortName("");
@@ -121,7 +131,7 @@ export default function PortBeaconPage() {
 
   const handleJoin = async (conversationId: string) => {
     if (!profileId) return;
-    await supabase.from("conversation_members").upsert(
+    const { error: joinErr } = await supabase.from("conversation_members").upsert(
       {
         conversation_id: conversationId,
         profile_id: profileId,
@@ -129,6 +139,9 @@ export default function PortBeaconPage() {
       },
       { onConflict: "conversation_id,profile_id" }
     );
+    if (joinErr) {
+      setError(joinErr.message);
+    }
   };
 
   const filteredChannels = channels.filter(

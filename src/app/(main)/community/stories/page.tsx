@@ -42,12 +42,16 @@ export default function SeaStoriesPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStories = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error: fetchErr } = await supabase
       .from("sea_stories")
       .select("id, author_id, title, body, tags, like_count, created_at, profiles(display_name)")
       .order("created_at", { ascending: false })
       .limit(50);
-    if (data) setStories(data as unknown as Story[]);
+    if (fetchErr) {
+      setError(fetchErr.message);
+    } else if (data) {
+      setStories(data as unknown as Story[]);
+    }
     setLoading(false);
   }, [supabase]);
 
@@ -104,22 +108,34 @@ export default function SeaStoriesPage() {
     if (!profileId) return;
     const liked = likedIds.has(storyId);
     if (liked) {
-      await supabase
+      const { error: deleteErr } = await supabase
         .from("story_reactions")
         .delete()
         .eq("story_id", storyId)
         .eq("profile_id", profileId);
+      if (deleteErr) {
+        setError(deleteErr.message);
+        return;
+      }
       setLikedIds((prev) => { const s = new Set(prev); s.delete(storyId); return s; });
       setStories((prev) => prev.map((s) => s.id === storyId ? { ...s, like_count: s.like_count - 1 } : s));
     } else {
-      await supabase.from("story_reactions").insert({ story_id: storyId, profile_id: profileId });
+      const { error: insertErr } = await supabase.from("story_reactions").insert({ story_id: storyId, profile_id: profileId });
+      if (insertErr) {
+        setError(insertErr.message);
+        return;
+      }
       setLikedIds((prev) => new Set(prev).add(storyId));
       setStories((prev) => prev.map((s) => s.id === storyId ? { ...s, like_count: s.like_count + 1 } : s));
     }
   };
 
   const handleDelete = async (storyId: string) => {
-    await supabase.from("sea_stories").delete().eq("id", storyId);
+    const { error: deleteErr } = await supabase.from("sea_stories").delete().eq("id", storyId);
+    if (deleteErr) {
+      setError(deleteErr.message);
+      return;
+    }
     setStories((prev) => prev.filter((s) => s.id !== storyId));
   };
 
@@ -133,6 +149,14 @@ export default function SeaStoriesPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {/* Global error banner */}
+      {error && !showForm && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+          <p className="text-red-400 text-sm">{error}</p>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300 text-xs ml-3">Dismiss</button>
+        </div>
+      )}
+
       {/* Header area */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <p className="text-slate-400 text-sm">

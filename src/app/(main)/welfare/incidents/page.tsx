@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables, Enums } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 const categories: { value: Enums<"incident_category">; label: string }[] = [
   { value: "safety", label: "Safety" },
@@ -333,11 +334,11 @@ export default function IncidentsPage() {
                     <span className={`text-xs px-2 py-0.5 border rounded ${categoryColors[inc.category] || categoryColors.other}`}>
                       {inc.category}
                     </span>
-                    {inc.incident_date && <span className="text-xs text-slate-500">{new Date(inc.incident_date).toLocaleDateString()}</span>}
+                    {inc.incident_date && <span className="text-xs text-slate-500">{formatDate(inc.incident_date)}</span>}
                   </div>
                 </div>
                 <p className="text-xs text-slate-500 shrink-0 ml-4">
-                  {new Date(inc.created_at ?? "").toLocaleDateString()}
+                  {formatDate(inc.created_at)}
                 </p>
               </div>
               {inc.description_encrypted && (

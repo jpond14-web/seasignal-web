@@ -57,7 +57,12 @@ export default function AdminVesselsPage() {
 
   async function handleDelete(id: string) {
     setActionLoading(id);
-    await supabase.from("vessels").delete().eq("id", id);
+    const { error } = await supabase.from("vessels").delete().eq("id", id);
+    if (error) {
+      alert("Failed to delete vessel: " + error.message);
+      setActionLoading(null);
+      return;
+    }
     setVessels((prev) => prev.filter((v) => v.id !== id));
     setDeleteConfirm(null);
     setActionLoading(null);

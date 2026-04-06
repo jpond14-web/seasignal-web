@@ -73,24 +73,32 @@ export default function WellnessPage() {
       setLoading(false);
       return;
     }
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("id")
       .eq("auth_user_id", user.id)
       .single();
+    if (profileError) {
+      showToast(profileError.message, "error");
+      setLoading(false);
+      return;
+    }
     if (!profile) {
       setLoading(false);
       return;
     }
     setProfileId(profile.id);
 
-    const { data } = await supabase
+    const { data, error: checkinsError } = await supabase
       .from("wellness_checkins")
       .select("*")
       .eq("profile_id", profile.id)
       .order("checkin_date", { ascending: false })
       .limit(4);
 
+    if (checkinsError) {
+      showToast(checkinsError.message, "error");
+    }
     setRecentCheckins((data as WellnessCheckin[]) || []);
     setLoading(false);
   }

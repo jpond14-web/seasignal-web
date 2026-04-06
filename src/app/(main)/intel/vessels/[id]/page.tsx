@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { formatDate } from "@/lib/format";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -181,7 +182,7 @@ export default async function VesselDetailPage({ params }: Props) {
                       : "Seafarer"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {new Date(r.created_at ?? "").toLocaleDateString()}
+                    {formatDate(r.created_at)}
                   </p>
                 </div>
                 {ratings && (

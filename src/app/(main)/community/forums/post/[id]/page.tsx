@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { formatDate } from "@/lib/format";
 
 type PostWithProfile = {
   id: string;
@@ -114,7 +115,7 @@ export default function PostPage() {
             <p className="text-sm text-slate-300 mt-2 leading-relaxed whitespace-pre-wrap">{post.body}</p>
             <div className="flex items-center gap-3 mt-3 text-xs text-slate-500">
               <span>{post.is_anonymous ? "Anonymous" : post.profiles?.display_name || "Unknown"}</span>
-              <span>{new Date(post.created_at).toLocaleDateString()}</span>
+              <span>{formatDate(post.created_at)}</span>
             </div>
           </div>
         </div>
@@ -128,7 +129,7 @@ export default function PostPage() {
             <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{r.body}</p>
             <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
               <span>{r.is_anonymous ? "Anonymous" : r.profiles?.display_name || "Unknown"}</span>
-              <span>{new Date(r.created_at).toLocaleDateString()}</span>
+              <span>{formatDate(r.created_at)}</span>
             </div>
           </div>
         ))}

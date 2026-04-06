@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import type { ConversationWithMeta, ConversationType } from "./types";
+import { formatDate } from "@/lib/format";
 
 const CHANNEL_TYPES: ConversationType[] = ["channel", "vessel_channel", "company_channel", "port_channel"];
 
@@ -25,7 +26,7 @@ function formatTime(dateStr: string) {
   if (diffHrs < 24) return `${diffHrs}h`;
   const diffDays = Math.floor(diffHrs / 24);
   if (diffDays < 7) return `${diffDays}d`;
-  return d.toLocaleDateString();
+  return formatDate(dateStr);
 }
 
 type ConversationItemProps = {

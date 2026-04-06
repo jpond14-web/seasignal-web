@@ -70,6 +70,7 @@ export default function MessagesPage() {
   const [newChannelType, setNewChannelType] = useState<ConversationType>("channel");
   const [creatingChannel, setCreatingChannel] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Heartbeat: update last_seen_at
   useEffect(() => {
@@ -104,7 +105,12 @@ export default function MessagesPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data: profile } = await supabase.from("profiles").select("id, department_tag, vessel_type_tags, rank_range").eq("auth_user_id", user.id).single();
+    const { data: profile, error: profileErr } = await supabase.from("profiles").select("id, department_tag, vessel_type_tags, rank_range").eq("auth_user_id", user.id).single();
+    if (profileErr) {
+      setError(profileErr.message);
+      setLoading(false);
+      return;
+    }
     if (!profile) return;
     setProfileId(profile.id);
     setUserProfile({
@@ -114,10 +120,16 @@ export default function MessagesPage() {
     });
 
     // Get user's memberships with pin/archive state
-    const { data: memberships } = await supabase
+    const { data: memberships, error: membershipsErr } = await supabase
       .from("conversation_members")
       .select("conversation_id, last_read_at, is_pinned, is_archived, is_muted")
       .eq("profile_id", profile.id);
+
+    if (membershipsErr) {
+      setError(membershipsErr.message);
+      setLoading(false);
+      return;
+    }
 
     if (!memberships || memberships.length === 0) {
       // Auto-join: system channels + auto_joinable channels matching user profile
@@ -161,12 +173,17 @@ export default function MessagesPage() {
     const membershipMap = new Map(memberships.map(m => [m.conversation_id, m]));
     const ids = memberships.map((m) => m.conversation_id);
 
-    const { data: convos } = await supabase
+    const { data: convos, error: convosErr } = await supabase
       .from("conversations")
       .select("*")
       .in("id", ids)
       .order("updated_at", { ascending: false });
 
+    if (convosErr) {
+      setError(convosErr.message);
+      setLoading(false);
+      return;
+    }
     if (!convos) { setLoading(false); return; }
 
     // --- Batch query: unread counts ---
@@ -445,28 +462,31 @@ export default function MessagesPage() {
 
   async function togglePin(convoId: string, currentlyPinned: boolean) {
     if (!profileId) return;
-    await supabase.from("conversation_members")
+    const { error: pinErr } = await supabase.from("conversation_members")
       .update({ is_pinned: !currentlyPinned })
       .eq("conversation_id", convoId)
       .eq("profile_id", profileId);
+    if (pinErr) { setError(pinErr.message); return; }
     load();
   }
 
   async function toggleArchive(convoId: string, currentlyArchived: boolean) {
     if (!profileId) return;
-    await supabase.from("conversation_members")
+    const { error: archiveErr } = await supabase.from("conversation_members")
       .update({ is_archived: !currentlyArchived })
       .eq("conversation_id", convoId)
       .eq("profile_id", profileId);
+    if (archiveErr) { setError(archiveErr.message); return; }
     load();
   }
 
   async function toggleMute(convoId: string, currentlyMuted: boolean) {
     if (!profileId) return;
-    await supabase.from("conversation_members")
+    const { error: muteErr } = await supabase.from("conversation_members")
       .update({ is_muted: !currentlyMuted })
       .eq("conversation_id", convoId)
       .eq("profile_id", profileId);
+    if (muteErr) { setError(muteErr.message); return; }
     load();
   }
 
@@ -574,6 +594,14 @@ export default function MessagesPage() {
           {tab === "direct" ? "+ New Message" : "+ Browse Channels"}
         </button>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+          <p className="text-red-400 text-sm">{error}</p>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300 text-xs ml-3">Dismiss</button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-5 bg-navy-900 rounded-lg p-1 border border-navy-700">

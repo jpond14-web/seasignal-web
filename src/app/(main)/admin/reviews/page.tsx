@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Enums } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 interface ReviewRow {
   id: string;
@@ -114,7 +115,7 @@ export default function AdminReviewsPage() {
                     </p>
                   )}
                   <p className="text-xs text-slate-500 mt-2">
-                    {new Date(review.created_at).toLocaleDateString()} -- ID:{" "}
+                    {formatDate(new Date(review.created_at))} -- ID:{" "}
                     {review.id.slice(0, 8)}...
                   </p>
                 </div>

@@ -75,29 +75,41 @@ export function CrewHistorySection({ profileId }: { profileId: string }) {
 
   const loadData = useCallback(async () => {
     // Load crew history with vessel/company names
-    const { data: history } = await supabase
+    const { data: history, error: historyErr } = await supabase
       .from("crew_history")
       .select("*")
       .eq("profile_id", profileId)
       .order("joined_at", { ascending: false });
 
+    if (historyErr) {
+      showToast(historyErr.message, "error");
+      setLoading(false);
+      return;
+    }
+
     if (history && history.length > 0) {
       // Fetch vessel names
       const vesselIds = [...new Set(history.map((h) => h.vessel_id).filter(Boolean))] as string[];
-      const { data: vesselData } = await supabase
+      const { data: vesselData, error: vesselErr } = await supabase
         .from("vessels")
         .select("id, name")
         .in("id", vesselIds);
+      if (vesselErr) {
+        showToast(vesselErr.message, "error");
+      }
       const vesselMap = new Map((vesselData || []).map((v) => [v.id, v.name]));
 
       // Fetch company names
       const companyIds = [...new Set(history.filter((h) => h.company_id).map((h) => h.company_id!))];
       let companyMap = new Map<string, string>();
       if (companyIds.length > 0) {
-        const { data: companyData } = await supabase
+        const { data: companyData, error: companyErr } = await supabase
           .from("companies")
           .select("id, name")
           .in("id", companyIds);
+        if (companyErr) {
+          showToast(companyErr.message, "error");
+        }
         companyMap = new Map((companyData || []).map((c) => [c.id, c.name]));
       }
 
@@ -119,6 +131,8 @@ export function CrewHistorySection({ profileId }: { profileId: string }) {
       supabase.from("vessels").select("id, name, imo_number").limit(500),
       supabase.from("companies").select("id, name").limit(500),
     ]);
+    if (vRes.error) showToast(vRes.error.message, "error");
+    if (cRes.error) showToast(cRes.error.message, "error");
     setVessels(vRes.data || []);
     setCompanies(cRes.data || []);
     setLoading(false);
@@ -131,12 +145,16 @@ export function CrewHistorySection({ profileId }: { profileId: string }) {
     if (vesselIds.length === 0) return;
 
     // Find other crew members on the same vessels
-    const { data: otherCrew } = await supabase
+    const { data: otherCrew, error: crewErr } = await supabase
       .from("crew_history")
       .select("profile_id, vessel_id, joined_at, left_at")
       .in("vessel_id", vesselIds)
       .neq("profile_id", profileId);
 
+    if (crewErr) {
+      showToast(crewErr.message, "error");
+      return;
+    }
     if (!otherCrew || otherCrew.length === 0) return;
 
     // Check for date overlaps

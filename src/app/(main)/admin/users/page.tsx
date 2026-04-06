@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { logAdminAction } from "@/lib/auditLog";
 import type { Tables, Enums } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 type Profile = Tables<"profiles">;
 
@@ -87,10 +88,15 @@ export default function AdminUsersPage() {
 
   async function toggleVerify(userId: string, currentlyVerified: boolean) {
     setActionLoading(userId);
-    await supabase
+    const { error } = await supabase
       .from("profiles")
       .update({ is_verified: !currentlyVerified })
       .eq("id", userId);
+    if (error) {
+      alert("Failed to update verification: " + error.message);
+      setActionLoading(null);
+      return;
+    }
     setUsers((prev) =>
       prev.map((u) =>
         u.id === userId ? { ...u, is_verified: !currentlyVerified } : u
@@ -110,10 +116,15 @@ export default function AdminUsersPage() {
     if (!window.confirm(confirmText)) return;
 
     setActionLoading(userId);
-    await supabase
+    const { error } = await supabase
       .from("profiles")
       .update({ is_admin: !currentlyAdmin })
       .eq("id", userId);
+    if (error) {
+      alert("Failed to update admin status: " + error.message);
+      setActionLoading(null);
+      return;
+    }
 
     if (adminProfileId) {
       await logAdminAction(
@@ -232,7 +243,7 @@ export default function AdminUsersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs hidden lg:table-cell">
-                    {new Date(user.created_at!).toLocaleDateString()}
+                    {formatDate(new Date(user.created_at!))}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

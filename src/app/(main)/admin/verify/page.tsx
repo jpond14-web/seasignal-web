@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 type Profile = Tables<"profiles">;
 
@@ -143,7 +144,7 @@ export default function AdminVerifyPage() {
                     </p>
                     <p className="text-xs text-slate-500">
                       Joined{" "}
-                      {new Date(profile.created_at!).toLocaleDateString()}
+                      {formatDate(new Date(profile.created_at!))}
                     </p>
                   </div>
                 </div>

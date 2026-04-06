@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 type JobListing = Tables<"job_listings"> & {
   companies: { id: string; name: string } | null;
@@ -160,7 +161,7 @@ export default function MyJobsPage() {
                       <p className="text-sm text-slate-400 mt-0.5">{job.companies.name}</p>
                     )}
                     <p className="text-xs text-slate-500 mt-1">
-                      Posted {new Date(job.created_at ?? "").toLocaleDateString()} &middot; {job.applications_count} application{job.applications_count !== 1 ? "s" : ""}
+                      Posted {formatDate(job.created_at)} &middot; {job.applications_count} application{job.applications_count !== 1 ? "s" : ""}
                     </p>
                   </div>
                   <div className="flex gap-2 shrink-0">
@@ -228,7 +229,7 @@ export default function MyJobsPage() {
                       <p className="text-sm text-slate-400 mt-0.5">{app.job_listings.companies.name}</p>
                     )}
                     <p className="text-xs text-slate-500 mt-1">
-                      Applied {new Date(app.created_at ?? "").toLocaleDateString()}
+                      Applied {formatDate(app.created_at)}
                     </p>
                     {app.cover_message && (
                       <p className="text-sm text-slate-400 mt-2 line-clamp-2">{app.cover_message}</p>

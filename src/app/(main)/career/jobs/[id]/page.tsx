@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 type JobListing = Tables<"job_listings"> & {
   companies: { id: string; name: string; company_type: string; country: string | null } | null;
@@ -231,12 +232,12 @@ export default function JobDetailPage() {
               {job.embarkation_date && (
                 <div>
                   <p className="text-slate-500">Embarkation Date</p>
-                  <p className="text-slate-200">{new Date(job.embarkation_date).toLocaleDateString()}</p>
+                  <p className="text-slate-200">{formatDate(job.embarkation_date)}</p>
                 </div>
               )}
               <div>
                 <p className="text-slate-500">Posted</p>
-                <p className="text-slate-200">{new Date(job.created_at ?? "").toLocaleDateString()}</p>
+                <p className="text-slate-200">{formatDate(job.created_at)}</p>
               </div>
             </div>
           </div>
@@ -361,7 +362,7 @@ export default function JobDetailPage() {
                           </p>
                         )}
                         <p className="text-xs text-slate-500 mt-2">
-                          Applied {new Date(app.created_at ?? "").toLocaleDateString()}
+                          Applied {formatDate(app.created_at)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -417,7 +418,7 @@ export default function JobDetailPage() {
               {job.expires_at && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">Expires</span>
-                  <span className="text-slate-200">{new Date(job.expires_at).toLocaleDateString()}</span>
+                  <span className="text-slate-200">{formatDate(job.expires_at)}</span>
                 </div>
               )}
             </div>

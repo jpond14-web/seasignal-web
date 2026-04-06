@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/types";
+import { formatDate } from "@/lib/format";
 
 type JobListing = Tables<"job_listings"> & {
   companies: { id: string; name: string } | null;
@@ -213,7 +214,7 @@ export default function JobsPage() {
                   )}
                   {job.embarkation_date && (
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Embark: {new Date(job.embarkation_date).toLocaleDateString()}
+                      Embark: {formatDate(job.embarkation_date)}
                     </p>
                   )}
                   <p className="text-xs text-slate-500 mt-2">{timeAgo(job.created_at ?? "")}</p>
