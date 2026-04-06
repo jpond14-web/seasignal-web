@@ -5,6 +5,9 @@ const tabs = [
   { href: "/community/seafarers", label: "Seafarers" },
   { href: "/community/stories", label: "Sea Stories" },
   { href: "/community/mentors", label: "Mentors" },
+  { href: "/community/vessel-rooms", label: "Vessel Rooms" },
+  { href: "/community/port-beacon", label: "Port Beacon" },
+  { href: "/community/ask-fleet", label: "Ask the Fleet" },
 ];
 
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
