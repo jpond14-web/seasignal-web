@@ -14,6 +14,6 @@ export const config = {
      * - favicon.ico, robots.txt, sitemap.xml, manifest.json, sw.js, offline.html
      * - Static assets (svg, png, jpg, jpeg, gif, webp, ico)
      */
-    "/((?!monitoring|_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.json|sw\\.js|offline\\.html|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!monitoring|_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.json|sw\\.js|offline\\.html|pitch-deck\\.html|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
