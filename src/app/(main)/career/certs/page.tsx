@@ -288,6 +288,7 @@ function CertCsvImportModal({
 
 export default function CertsPage() {
   const supabase = createClient();
+  const { showToast } = useToast();
   const [certs, setCerts] = useState<Tables<"certificates">[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -423,6 +424,32 @@ export default function CertsPage() {
   async function handleDelete(id: string) {
     await supabase.from("certificates").delete().eq("id", id);
     loadCerts();
+  }
+
+  async function handleDocUpload(certId: string, file: File) {
+    const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const path = `certs/${profileId}/${certId}.${ext}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from("certificates")
+      .upload(path, file, { upsert: true });
+
+    if (uploadErr) {
+      showToast("Upload failed: " + uploadErr.message, "error");
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("certificates").getPublicUrl(path);
+    const publicUrl = urlData?.publicUrl;
+
+    if (publicUrl) {
+      await supabase
+        .from("certificates")
+        .update({ document_url: publicUrl, verification_level: "document_uploaded" })
+        .eq("id", certId);
+      loadCerts();
+      showToast("Document uploaded — verification level upgraded", "success");
+    }
   }
 
   const daysUntilExpiry = useCallback((date: string | null): number | null => {
@@ -636,6 +663,34 @@ export default function CertsPage() {
                     )}
                   </div>
                 </div>
+                {/* Verification Level */}
+                <div className="flex items-center gap-2 mt-2">
+                  <VerificationBadge level={cert.verification_level ?? "self_reported"} />
+                  {!cert.document_url && (
+                    <label className="text-xs text-teal-400 hover:text-teal-300 cursor-pointer transition-colors">
+                      Upload Document
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleDocUpload(cert.id, file);
+                        }}
+                      />
+                    </label>
+                  )}
+                  {cert.document_url && (
+                    <a
+                      href={cert.document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
+                    >
+                      View Document
+                    </a>
+                  )}
+                </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-navy-700/50">
                   <div className="flex gap-3 text-xs text-slate-500">
                     {cert.issue_date && <span>Issued: {new Date(cert.issue_date).toLocaleDateString()}</span>}
@@ -661,5 +716,22 @@ export default function CertsPage() {
         />
       )}
     </div>
+  );
+}
+
+const VERIFICATION_LEVELS: Record<string, { label: string; color: string; icon: string }> = {
+  self_reported: { label: "Self Reported", color: "text-slate-400 border-slate-500/30 bg-slate-500/10", icon: "\u2022" },
+  document_uploaded: { label: "Document Uploaded", color: "text-blue-400 border-blue-500/30 bg-blue-500/10", icon: "\uD83D\uDCC4" },
+  hash_verified: { label: "Hash Verified", color: "text-amber-400 border-amber-500/30 bg-amber-500/10", icon: "\uD83D\uDD12" },
+  authority_confirmed: { label: "Authority Confirmed", color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10", icon: "\u2713" },
+};
+
+function VerificationBadge({ level }: { level: string }) {
+  const info = VERIFICATION_LEVELS[level] || VERIFICATION_LEVELS.self_reported;
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded border inline-flex items-center gap-1 ${info.color}`}>
+      <span>{info.icon}</span>
+      {info.label}
+    </span>
   );
 }
