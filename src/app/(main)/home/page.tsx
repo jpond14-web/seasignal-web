@@ -43,6 +43,15 @@ type ForumPostPreview = {
   profiles: { display_name: string } | null;
 };
 
+type FatigueAlert = {
+  score: number;
+  date: string;
+};
+
+type VerificationPending = {
+  count: number;
+};
+
 export default function HomePage() {
   const supabase = createClient();
   const [displayName, setDisplayName] = useState("");
@@ -56,6 +65,9 @@ export default function HomePage() {
   const [certWarnings, setCertWarnings] = useState<CertWarning[]>([]);
   const [forumPosts, setForumPosts] = useState<ForumPostPreview[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [fatigueAlert, setFatigueAlert] = useState<FatigueAlert | null>(null);
+  const [pendingVerifications, setPendingVerifications] = useState(0);
+  const [contractStrain, setContractStrain] = useState(false);
 
   // Stats
   const [storyCount, setStoryCount] = useState(0);
@@ -153,6 +165,51 @@ export default function HomePage() {
         }
         setUnreadCount(unread);
       }
+
+      // Fatigue alert — check latest assessment
+      const { data: latestFatigue } = await supabase
+        .from("fatigue_assessments")
+        .select("fatigue_score, assessment_date")
+        .eq("profile_id", profile.id)
+        .order("assessment_date", { ascending: false })
+        .limit(1)
+        .single();
+      if (latestFatigue && latestFatigue.fatigue_score >= 5) {
+        setFatigueAlert({ score: latestFatigue.fatigue_score, date: latestFatigue.assessment_date });
+      }
+
+      // Pending verification requests — look up via platform_token
+      const { data: profileToken } = await supabase
+        .from("profiles")
+        .select("platform_token")
+        .eq("id", profile.id)
+        .single();
+      if (profileToken?.platform_token) {
+        const { count: pendingCount } = await supabase
+          .from("verification_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("platform_token", profileToken.platform_token)
+          .eq("request_status", "pending");
+        if (pendingCount && pendingCount > 0) setPendingVerifications(pendingCount);
+      }
+
+      // Contract strain check — latest wellness check-in
+      const { data: latestCheckin } = await supabase
+        .from("wellness_checkins")
+        .select("stress_level, workload_rating, overall_morale, contract_day_number")
+        .eq("profile_id", profile.id)
+        .order("checkin_date", { ascending: false })
+        .limit(1)
+        .single();
+      if (
+        latestCheckin &&
+        latestCheckin.contract_day_number &&
+        latestCheckin.contract_day_number > 120 &&
+        (latestCheckin.stress_level ?? 0) >= 4 &&
+        (latestCheckin.overall_morale ?? 5) <= 2
+      ) {
+        setContractStrain(true);
+      }
     }
 
     setLoading(false);
@@ -205,6 +262,30 @@ export default function HomePage() {
               accent="border-l-teal-500"
             />
           )}
+          {fatigueAlert && (
+            <ActivityCard
+              icon={"\uD83D\uDCA4"}
+              text={`High fatigue detected (${fatigueAlert.score}/7) — consider rest before your next watch`}
+              href="/welfare/fatigue"
+              accent="border-l-red-500"
+            />
+          )}
+          {contractStrain && (
+            <ActivityCard
+              icon={"\uD83D\uDFE0"}
+              text="Contract strain indicators detected — check your wellness trends"
+              href="/welfare/trends"
+              accent="border-l-amber-500"
+            />
+          )}
+          {pendingVerifications > 0 && (
+            <ActivityCard
+              icon={"\uD83D\uDD10"}
+              text={`${pendingVerifications} pending verification request${pendingVerifications !== 1 ? "s" : ""}`}
+              href="/career/verification"
+              accent="border-l-teal-500"
+            />
+          )}
           {certWarnings.map((cert) => (
             <ActivityCard
               key={cert.id}
@@ -214,7 +295,7 @@ export default function HomePage() {
               accent={cert.days_left <= 7 ? "border-l-red-500" : cert.days_left <= 30 ? "border-l-amber-500" : "border-l-blue-500"}
             />
           ))}
-          {unreadCount === 0 && certWarnings.length === 0 && (
+          {unreadCount === 0 && certWarnings.length === 0 && !fatigueAlert && !contractStrain && pendingVerifications === 0 && (
             <div className="bg-navy-900 border border-navy-700 rounded-lg p-4 text-center">
               <p className="text-slate-500 text-sm">You&apos;re all caught up. Smooth sailing.</p>
             </div>
@@ -382,12 +463,15 @@ export default function HomePage() {
           Quick Actions
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <QuickAction href="/welfare/fatigue" label="Fatigue Check" icon={"\uD83D\uDCA4"} />
+          <QuickAction href="/welfare/wellness" label="Wellness Check-in" icon={"\uD83D\uDC9A"} />
           <QuickAction href="/career/sea-time" label="Log Sea Time" icon={"\uD83D\uDDD3"} />
           <QuickAction href="/career/certs" label="Check Certs" icon={"\uD83D\uDCDC"} />
-          <QuickAction href="/career/jobs" label="Browse Jobs" icon={"\uD83D\uDD0D"} />
-          <QuickAction href="/community/mentors" label="Find a Mentor" icon={"\uD83E\uDDD1\u200D\uD83C\uDFEB"} />
+          <QuickAction href="/career/record" label="My Record" icon={"\uD83D\uDCCB"} />
+          <QuickAction href="/community/vessel-rooms" label="Vessel Rooms" icon={"\u2693"} />
           <QuickAction href="/welfare/incidents" label="Report Incident" icon={"\uD83D\uDEA8"} />
-          <QuickAction href="/welfare/mlc" label="Know Your Rights" icon={"\u2696"} />
+          <QuickAction href="/career/contract-check" label="Contract Check" icon={"\uD83D\uDCDD"} />
+          <QuickAction href="/welfare/rights" label="Know Your Rights" icon={"\u2696"} />
         </div>
       </section>
 
