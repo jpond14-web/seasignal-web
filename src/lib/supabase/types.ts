@@ -70,6 +70,7 @@ export type Database = {
           status: Database["public"]["Enums"]["cert_status"] | null
           title: string
           updated_at: string | null
+          verification_level: string | null
         }
         Insert: {
           alert_days?: number[] | null
@@ -88,6 +89,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["cert_status"] | null
           title: string
           updated_at?: string | null
+          verification_level?: string | null
         }
         Update: {
           alert_days?: number[] | null
@@ -106,6 +108,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["cert_status"] | null
           title?: string
           updated_at?: string | null
+          verification_level?: string | null
         }
         Relationships: [
           {
@@ -464,6 +467,57 @@ export type Database = {
           },
           {
             foreignKeyName: "crew_history_vessel_id_fkey"
+            columns: ["vessel_id"]
+            isOneToOne: false
+            referencedRelation: "vessels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fatigue_assessments: {
+        Row: {
+          assessment_date: string
+          created_at: string | null
+          fatigue_score: number
+          hours_of_rest_last_24h: number | null
+          id: string
+          notes: string | null
+          profile_id: string
+          vessel_id: string | null
+          watch_schedule: string | null
+        }
+        Insert: {
+          assessment_date?: string
+          created_at?: string | null
+          fatigue_score: number
+          hours_of_rest_last_24h?: number | null
+          id?: string
+          notes?: string | null
+          profile_id: string
+          vessel_id?: string | null
+          watch_schedule?: string | null
+        }
+        Update: {
+          assessment_date?: string
+          created_at?: string | null
+          fatigue_score?: number
+          hours_of_rest_last_24h?: number | null
+          id?: string
+          notes?: string | null
+          profile_id?: string
+          vessel_id?: string | null
+          watch_schedule?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fatigue_assessments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fatigue_assessments_vessel_id_fkey"
             columns: ["vessel_id"]
             isOneToOne: false
             referencedRelation: "vessels"
@@ -1196,6 +1250,7 @@ export type Database = {
           is_admin: boolean | null
           is_verified: boolean | null
           last_seen_at: string | null
+          platform_token: string | null
           rank_range: Database["public"]["Enums"]["rank_category"] | null
           reputation_score: number | null
           subscription_tier:
@@ -1221,6 +1276,7 @@ export type Database = {
           is_admin?: boolean | null
           is_verified?: boolean | null
           last_seen_at?: string | null
+          platform_token?: string | null
           rank_range?: Database["public"]["Enums"]["rank_category"] | null
           reputation_score?: number | null
           subscription_tier?:
@@ -1246,6 +1302,7 @@ export type Database = {
           is_admin?: boolean | null
           is_verified?: boolean | null
           last_seen_at?: string | null
+          platform_token?: string | null
           rank_range?: Database["public"]["Enums"]["rank_category"] | null
           reputation_score?: number | null
           subscription_tier?:
@@ -1769,6 +1826,104 @@ export type Database = {
         }
         Relationships: []
       }
+      verification_requests: {
+        Row: {
+          cert_type: string
+          completed_at: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          platform_token: string
+          request_status: string | null
+          requester_email: string
+          requester_name: string
+          requester_organization: string | null
+          requester_type: string
+          response_data: Json | null
+          seafarer_authorized: boolean | null
+        }
+        Insert: {
+          cert_type: string
+          completed_at?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          platform_token: string
+          request_status?: string | null
+          requester_email: string
+          requester_name: string
+          requester_organization?: string | null
+          requester_type: string
+          response_data?: Json | null
+          seafarer_authorized?: boolean | null
+        }
+        Update: {
+          cert_type?: string
+          completed_at?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          platform_token?: string
+          request_status?: string | null
+          requester_email?: string
+          requester_name?: string
+          requester_organization?: string | null
+          requester_type?: string
+          response_data?: Json | null
+          seafarer_authorized?: boolean | null
+        }
+        Relationships: []
+      }
+      verification_settings: {
+        Row: {
+          allow_coc_verification: boolean | null
+          allow_endorsement_verification: boolean | null
+          allow_medical_verification: boolean | null
+          allow_specialty_verification: boolean | null
+          allow_stcw_verification: boolean | null
+          auto_authorize_psc: boolean | null
+          created_at: string | null
+          id: string
+          notification_on_request: boolean | null
+          profile_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          allow_coc_verification?: boolean | null
+          allow_endorsement_verification?: boolean | null
+          allow_medical_verification?: boolean | null
+          allow_specialty_verification?: boolean | null
+          allow_stcw_verification?: boolean | null
+          auto_authorize_psc?: boolean | null
+          created_at?: string | null
+          id?: string
+          notification_on_request?: boolean | null
+          profile_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          allow_coc_verification?: boolean | null
+          allow_endorsement_verification?: boolean | null
+          allow_medical_verification?: boolean | null
+          allow_specialty_verification?: boolean | null
+          allow_stcw_verification?: boolean | null
+          auto_authorize_psc?: boolean | null
+          created_at?: string | null
+          id?: string
+          notification_on_request?: boolean | null
+          profile_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_settings_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vessels: {
         Row: {
           avg_rating: number | null
@@ -1842,11 +1997,94 @@ export type Database = {
           },
         ]
       }
+      wellness_checkins: {
+        Row: {
+          checkin_date: string
+          company_id: string | null
+          connectivity_rating: number | null
+          contract_day_number: number | null
+          created_at: string | null
+          food_quality_rating: number | null
+          free_text: string | null
+          id: string
+          overall_morale: number | null
+          profile_id: string
+          safety_culture_rating: number | null
+          shore_leave_access: number | null
+          sleep_quality: number | null
+          stress_level: number | null
+          vessel_id: string | null
+          workload_rating: number | null
+        }
+        Insert: {
+          checkin_date?: string
+          company_id?: string | null
+          connectivity_rating?: number | null
+          contract_day_number?: number | null
+          created_at?: string | null
+          food_quality_rating?: number | null
+          free_text?: string | null
+          id?: string
+          overall_morale?: number | null
+          profile_id: string
+          safety_culture_rating?: number | null
+          shore_leave_access?: number | null
+          sleep_quality?: number | null
+          stress_level?: number | null
+          vessel_id?: string | null
+          workload_rating?: number | null
+        }
+        Update: {
+          checkin_date?: string
+          company_id?: string | null
+          connectivity_rating?: number | null
+          contract_day_number?: number | null
+          created_at?: string | null
+          food_quality_rating?: number | null
+          free_text?: string | null
+          id?: string
+          overall_morale?: number | null
+          profile_id?: string
+          safety_culture_rating?: number | null
+          shore_leave_access?: number | null
+          sleep_quality?: number | null
+          stress_level?: number | null
+          vessel_id?: string | null
+          workload_rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wellness_checkins_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wellness_checkins_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wellness_checkins_vessel_id_fkey"
+            columns: ["vessel_id"]
+            isOneToOne: false
+            referencedRelation: "vessels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_vessel_safety_signals: {
+        Args: { p_months_back?: number; p_vessel_id: string }
+        Returns: Json
+      }
       cleanup_expired_messages: { Args: never; Returns: undefined }
       find_mutual_crew: {
         Args: { p_profile_id: string }
@@ -1863,6 +2101,16 @@ export type Database = {
           p_flag_state?: string
           p_rank: string
           p_vessel_type?: Database["public"]["Enums"]["vessel_type"]
+        }
+        Returns: Json
+      }
+      get_wellness_aggregates: {
+        Args: {
+          p_contract_month_max?: number
+          p_contract_month_min?: number
+          p_date_from?: string
+          p_rank_range?: string
+          p_vessel_type?: string
         }
         Returns: Json
       }
@@ -2155,4 +2403,3 @@ export const Constants = {
     },
   },
 } as const
-

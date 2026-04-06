@@ -3,6 +3,7 @@ import { HubNav } from "@/components/layout/hub-nav";
 const tabs = [
   { href: "/career/certs", label: "Certs" },
   { href: "/career/sea-time", label: "Sea Time" },
+  { href: "/career/verification", label: "Verification" },
   { href: "/career/contract-check", label: "Contract Check" },
   { href: "/career/jobs", label: "Jobs" },
 ];
