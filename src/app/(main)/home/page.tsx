@@ -147,23 +147,25 @@ export default function HomePage() {
         );
       }
 
-      // Unread messages count
+      // Unread messages count — batched
       const { data: memberships } = await supabase
         .from("conversation_members")
         .select("conversation_id, last_read_at")
         .eq("profile_id", profile.id);
       if (memberships) {
-        let unread = 0;
-        for (const m of memberships) {
-          if (!m.last_read_at) { unread++; continue; }
-          const { count } = await supabase
-            .from("messages")
-            .select("id", { count: "exact", head: true })
-            .eq("conversation_id", m.conversation_id)
-            .gt("created_at", m.last_read_at);
-          if (count && count > 0) unread++;
-        }
-        setUnreadCount(unread);
+        const neverRead = memberships.filter((m) => !m.last_read_at).length;
+        const withReadAt = memberships.filter((m) => m.last_read_at);
+        const unreadChecks = await Promise.all(
+          withReadAt.map((m) =>
+            supabase
+              .from("messages")
+              .select("id", { count: "exact", head: true })
+              .eq("conversation_id", m.conversation_id)
+              .gt("created_at", m.last_read_at!)
+          )
+        );
+        const withNew = unreadChecks.filter((r) => r.count && r.count > 0).length;
+        setUnreadCount(neverRead + withNew);
       }
 
       // Fatigue alert — check latest assessment

@@ -245,7 +245,7 @@ export default function SeafarersPage() {
                       {s.avatar_url ? (
                         <Image
                           src={s.avatar_url}
-                          alt=""
+                          alt={`${s.display_name} profile picture`}
                           width={48}
                           height={48}
                           className="w-12 h-12 rounded-full object-cover"

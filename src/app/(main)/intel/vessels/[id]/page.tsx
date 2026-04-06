@@ -60,7 +60,7 @@ export default async function VesselDetailPage({ params }: Props) {
 
   const { data: reviews } = await supabase
     .from("reviews")
-    .select("*")
+    .select("id, is_anonymous, created_at, ratings, narrative, review_type")
     .eq("vessel_id", id)
     .eq("status", "published")
     .order("created_at", { ascending: false });

@@ -502,6 +502,11 @@ export default function ConversationPage() {
     const file = e.target.files?.[0];
     if (!file || !profileId) return;
 
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError("File type not allowed. Upload images, PDFs, or Word documents.");
+      return;
+    }
     if (file.size > 10 * 1024 * 1024) {
       setUploadError("File too large. Maximum size is 10MB.");
       return;
@@ -517,7 +522,7 @@ export default function ConversationPage() {
       .upload(filePath, file);
 
     if (uploadErr) {
-      void uploadErr; // TODO: surface upload error to user
+      setUploadError(uploadErr.message || "Failed to upload file. Please try again.");
       setUploading(false);
       return;
     }

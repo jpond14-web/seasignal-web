@@ -252,6 +252,39 @@ export default function FatiguePage() {
         </p>
       </div>
 
+      {/* Trend Chart */}
+      {assessments.length >= 2 && (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-slate-100 mb-4">
+            14-Day Trend
+          </h2>
+          <div className="bg-navy-900 border border-navy-700 rounded-lg p-4">
+            <div className="flex items-end gap-1 h-32">
+              {[...assessments].reverse().map((a) => {
+                const pct = (a.fatigue_score / 7) * 100;
+                return (
+                  <div
+                    key={a.id}
+                    className="flex-1 flex flex-col items-center gap-1 min-w-0"
+                  >
+                    <span className={`text-[10px] font-mono ${scoreTextColor(a.fatigue_score)}`}>
+                      {a.fatigue_score}
+                    </span>
+                    <div
+                      className={`w-full rounded-t ${scoreColor(a.fatigue_score)}`}
+                      style={{ height: `${pct}%` }}
+                    />
+                    <span className="text-[9px] text-slate-500 truncate w-full text-center">
+                      {new Date(a.assessment_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Recent Assessments */}
       <section>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">

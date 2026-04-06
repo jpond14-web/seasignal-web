@@ -27,8 +27,8 @@ export async function GET(request: Request) {
           return NextResponse.redirect(`${origin}/profile/setup`);
         }
 
-        // Redirect to setup if essential fields are missing
-        if (!profile.display_name || !profile.department_tag) {
+        // Redirect to setup if display name is missing
+        if (!profile.display_name) {
           return NextResponse.redirect(`${origin}/profile/setup`);
         }
       }

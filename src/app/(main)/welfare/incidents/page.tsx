@@ -38,6 +38,8 @@ export default function IncidentsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -62,6 +64,7 @@ export default function IncidentsPage() {
     setEditingId(null);
     setShowForm(false);
     setError("");
+    setAttachmentFile(null);
   }
 
   function startEdit(inc: Tables<"incident_logs">) {
@@ -88,11 +91,47 @@ export default function IncidentsPage() {
       incident_date: form.incident_date || null,
     };
 
+    // Handle file upload if present
+    let attachments: { name: string; url: string; type: string; size: number }[] | null = null;
+    if (attachmentFile && !editingId) {
+      setUploading(true);
+      const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+      if (!allowed.includes(attachmentFile.type)) {
+        setError("File type not allowed. Please upload images, PDFs, or Word documents.");
+        setSaving(false);
+        setUploading(false);
+        return;
+      }
+      if (attachmentFile.size > 10 * 1024 * 1024) {
+        setError("File too large. Maximum size is 10MB.");
+        setSaving(false);
+        setUploading(false);
+        return;
+      }
+      const ext = attachmentFile.name.split(".").pop();
+      const filePath = `incidents/${profileId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("attachments")
+        .upload(filePath, attachmentFile);
+      if (uploadErr) {
+        setError(uploadErr.message || "Failed to upload file.");
+        setSaving(false);
+        setUploading(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(filePath);
+      attachments = [{ name: attachmentFile.name, url: urlData.publicUrl, type: attachmentFile.type, size: attachmentFile.size }];
+      setUploading(false);
+    }
+
     if (editingId) {
       const { error: err } = await supabase.from("incident_logs").update(payload).eq("id", editingId);
       if (err) { setError(err.message); setSaving(false); return; }
     } else {
-      const { error: err } = await supabase.from("incident_logs").insert({ ...payload, profile_id: profileId });
+      const insertPayload = attachments
+        ? { ...payload, profile_id: profileId, attachments }
+        : { ...payload, profile_id: profileId };
+      const { error: err } = await supabase.from("incident_logs").insert(insertPayload);
       if (err) { setError(err.message); setSaving(false); return; }
     }
 
@@ -239,11 +278,24 @@ export default function IncidentsPage() {
                 placeholder="Describe what happened in detail..."
                 className="w-full px-3 py-2 bg-navy-800 border border-navy-600 rounded text-slate-100 placeholder:text-slate-500 text-sm focus:border-teal-500 focus:outline-none resize-none" />
             </div>
+            {!editingId && (
+              <div>
+                <label htmlFor="incident-file" className="block text-sm text-slate-300 mb-1">Attach file (optional)</label>
+                <input
+                  id="incident-file"
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx"
+                  onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-navy-700 file:text-slate-200 hover:file:bg-navy-600"
+                />
+                <p className="text-xs text-slate-500 mt-1">Images, PDFs, or Word documents. Max 10MB.</p>
+              </div>
+            )}
             {error && <p className="text-sm text-red-400">{error}</p>}
             <div className="flex gap-3">
-              <button type="submit" disabled={saving}
+              <button type="submit" disabled={saving || uploading}
                 className="px-4 py-2 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-navy-950 font-medium rounded text-sm transition-colors">
-                {saving ? "Saving..." : editingId ? "Update" : "Log Incident"}
+                {uploading ? "Uploading..." : saving ? "Saving..." : editingId ? "Update" : "Log Incident"}
               </button>
               <button type="button" onClick={resetForm}
                 className="px-4 py-2 bg-navy-800 border border-navy-600 rounded text-slate-300 text-sm hover:bg-navy-700 transition-colors">

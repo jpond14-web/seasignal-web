@@ -70,7 +70,7 @@ export default async function ProfilePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-navy-700">
           <InfoCard label="Department" value={formatEnum(profile.department_tag)} />
           <InfoCard label="Rank" value={formatEnum(profile.rank_range)} />
-          <InfoCard label="Experience" value={profile.experience_band ? `${profile.experience_band} years` : null} />
+          <InfoCard label="Experience" value={formatEnum(profile.experience_band)} />
           <InfoCard label="Home Port" value={profile.home_port} />
         </div>
 

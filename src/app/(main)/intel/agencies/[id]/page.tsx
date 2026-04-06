@@ -50,7 +50,7 @@ export default async function AgencyDetailPage({ params }: Props) {
 
   const { data: reviews } = await supabase
     .from("reviews")
-    .select("*")
+    .select("id, is_anonymous, created_at, contract_period, ratings, narrative, review_type")
     .eq("company_id", id)
     .eq("status", "published")
     .order("created_at", { ascending: false });

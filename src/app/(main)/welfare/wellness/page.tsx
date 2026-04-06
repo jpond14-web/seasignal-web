@@ -177,6 +177,32 @@ export default function WellnessPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {/* Contract Strain Banner */}
+      {recentCheckins.length > 0 && recentCheckins[0].contract_day_number && recentCheckins[0].contract_day_number >= 180 && (
+        <div className={`border rounded-lg p-4 mb-6 ${
+          recentCheckins[0].contract_day_number >= 330
+            ? "bg-red-500/10 border-red-500/30"
+            : recentCheckins[0].contract_day_number >= 270
+              ? "bg-amber-500/10 border-amber-500/30"
+              : "bg-blue-500/10 border-blue-500/30"
+        }`}>
+          <p className={`text-sm font-medium ${
+            recentCheckins[0].contract_day_number >= 330
+              ? "text-red-400"
+              : recentCheckins[0].contract_day_number >= 270
+                ? "text-amber-400"
+                : "text-blue-400"
+          }`}>
+            Contract day {recentCheckins[0].contract_day_number}
+            {recentCheckins[0].contract_day_number >= 330
+              ? " — Extended contract. Monitor your wellbeing closely and consider your repatriation rights under MLC 2006."
+              : recentCheckins[0].contract_day_number >= 270
+                ? " — Long contract. Pay attention to fatigue and stress levels."
+                : " — You're past the 6-month mark. Stay aware of how you're feeling."}
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-navy-900 border border-navy-700 rounded-lg p-6 mb-8">
         <h2 className="text-slate-100 font-semibold text-lg mb-2">
