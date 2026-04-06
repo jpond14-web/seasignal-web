@@ -5,6 +5,9 @@ const tabs = [
   { href: "/welfare/incidents", label: "Incidents" },
   { href: "/welfare/emergency", label: "Emergency" },
   { href: "/welfare/mental-health", label: "Mental Health" },
+  { href: "/welfare/fatigue", label: "Fatigue" },
+  { href: "/welfare/wellness", label: "Wellness" },
+  { href: "/welfare/trends", label: "Trends" },
   { href: "/welfare/mlc", label: "MLC Reference" },
 ];
 
