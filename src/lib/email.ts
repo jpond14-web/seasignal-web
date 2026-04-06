@@ -1,7 +1,7 @@
 import { reportError } from "@/lib/errorReporting";
 
 const RESEND_API_URL = "https://api.resend.com/emails";
-const FROM_ADDRESS = "SeaSignal <notifications@seasignal.com>";
+const FROM_ADDRESS = "SeaSignal <notifications@gabier.com>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://seasignal.app";
 
 interface SendEmailParams {
