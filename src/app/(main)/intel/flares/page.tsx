@@ -26,7 +26,7 @@ export default async function SignalFlaresPage() {
   const supabase = await createClient();
 
   const now = new Date().toISOString();
-  const { data: flares } = await (supabase as any)
+  const { data: flares } = await supabase
     .from("signal_flares")
     .select(
       `

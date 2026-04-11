@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/format";
 import Link from "next/link";
+import type { Database } from "@/lib/supabase/types";
+
+type IssueStage = Database["public"]["Enums"]["issue_stage"];
 
 const CATEGORY_LABELS: Record<string, string> = {
   unsafe_water: "Unsafe Drinking Water",
@@ -62,7 +65,7 @@ export default function AdvocacyDashboardPage() {
   }, []);
 
   async function loadIssues() {
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("signal_issues")
       .select("*, companies (id, name)")
       .order("last_reported_at", { ascending: false })
@@ -71,7 +74,7 @@ export default function AdvocacyDashboardPage() {
     setLoading(false);
   }
 
-  async function updateStage(id: string, newStage: string) {
+  async function updateStage(id: string, newStage: IssueStage) {
     setActionLoading(id);
     const updates: Record<string, unknown> = { stage: newStage };
     if (newStage === "company_contacted") {
@@ -80,7 +83,7 @@ export default function AdvocacyDashboardPage() {
     if (newStage === "resolved") {
       updates.resolution_date = new Date().toISOString();
     }
-    await (supabase as any).from("signal_issues").update(updates).eq("id", id);
+    await supabase.from("signal_issues").update(updates).eq("id", id);
     setIssues((prev) =>
       prev.map((i) => (i.id === id ? { ...i, ...updates } as IssueRow : i))
     );
@@ -89,9 +92,9 @@ export default function AdvocacyDashboardPage() {
 
   async function markRecurring(id: string) {
     setActionLoading(id);
-    await (supabase as any)
+    await supabase
       .from("signal_issues")
-      .update({ is_recurring: true, stage: "investigating" })
+      .update({ is_recurring: true, stage: "investigating" as IssueStage })
       .eq("id", id);
     setIssues((prev) =>
       prev.map((i) =>
@@ -311,10 +314,10 @@ export default function AdvocacyDashboardPage() {
 
 function getNextStages(
   current: string
-): { value: string; label: string; buttonStyle: string }[] {
+): { value: IssueStage; label: string; buttonStyle: string }[] {
   const transitions: Record<
     string,
-    { value: string; label: string; buttonStyle: string }[]
+    { value: IssueStage; label: string; buttonStyle: string }[]
   > = {
     monitoring: [
       {

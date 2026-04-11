@@ -1609,6 +1609,346 @@ export type Database = {
         }
         Relationships: []
       }
+      signal_articles: {
+        Row: {
+          article_type: Database["public"]["Enums"]["article_type"]
+          author_id: string | null
+          content: string | null
+          created_at: string | null
+          id: string
+          published_at: string | null
+          related_regulations: Json | null
+          slug: string
+          status: Database["public"]["Enums"]["article_status"] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          article_type: Database["public"]["Enums"]["article_type"]
+          author_id?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          published_at?: string | null
+          related_regulations?: Json | null
+          slug: string
+          status?: Database["public"]["Enums"]["article_status"] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          article_type?: Database["public"]["Enums"]["article_type"]
+          author_id?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          published_at?: string | null
+          related_regulations?: Json | null
+          slug?: string
+          status?: Database["public"]["Enums"]["article_status"] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signal_articles_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signal_flare_corroborations: {
+        Row: {
+          created_at: string | null
+          flare_id: string
+          id: string
+          profile_id: string
+          statement: string | null
+          vessel_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          flare_id: string
+          id?: string
+          profile_id: string
+          statement?: string | null
+          vessel_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          flare_id?: string
+          id?: string
+          profile_id?: string
+          statement?: string | null
+          vessel_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signal_flare_corroborations_flare_id_fkey"
+            columns: ["flare_id"]
+            isOneToOne: false
+            referencedRelation: "signal_flares"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signal_flare_corroborations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signal_flare_corroborations_vessel_id_fkey"
+            columns: ["vessel_id"]
+            isOneToOne: false
+            referencedRelation: "vessels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signal_flares: {
+        Row: {
+          admin_notes: string | null
+          attachments: Json | null
+          batch_release_at: string | null
+          category: Database["public"]["Enums"]["flare_category"]
+          company_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          incident_date_end: string | null
+          incident_date_start: string | null
+          is_anonymous: boolean | null
+          issue_id: string | null
+          profile_id: string
+          severity: Database["public"]["Enums"]["flare_severity"] | null
+          status: Database["public"]["Enums"]["flare_status"] | null
+          title: string
+          updated_at: string | null
+          vessel_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          attachments?: Json | null
+          batch_release_at?: string | null
+          category: Database["public"]["Enums"]["flare_category"]
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          incident_date_end?: string | null
+          incident_date_start?: string | null
+          is_anonymous?: boolean | null
+          issue_id?: string | null
+          profile_id: string
+          severity?: Database["public"]["Enums"]["flare_severity"] | null
+          status?: Database["public"]["Enums"]["flare_status"] | null
+          title: string
+          updated_at?: string | null
+          vessel_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          attachments?: Json | null
+          batch_release_at?: string | null
+          category?: Database["public"]["Enums"]["flare_category"]
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          incident_date_end?: string | null
+          incident_date_start?: string | null
+          is_anonymous?: boolean | null
+          issue_id?: string | null
+          profile_id?: string
+          severity?: Database["public"]["Enums"]["flare_severity"] | null
+          status?: Database["public"]["Enums"]["flare_status"] | null
+          title?: string
+          updated_at?: string | null
+          vessel_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signal_flares_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signal_flares_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "signal_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signal_flares_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signal_flares_vessel_id_fkey"
+            columns: ["vessel_id"]
+            isOneToOne: false
+            referencedRelation: "vessels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signal_issues: {
+        Row: {
+          article_id: string | null
+          assigned_to: string | null
+          category: Database["public"]["Enums"]["flare_category"]
+          company_contacted_at: string | null
+          company_id: string
+          company_responded_at: string | null
+          company_response: string | null
+          corroboration_total: number | null
+          created_at: string | null
+          first_reported_at: string | null
+          flare_count: number | null
+          id: string
+          is_recurring: boolean | null
+          last_reported_at: string | null
+          resolution_date: string | null
+          resolution_description: string | null
+          resolution_verified_by: string | null
+          stage: Database["public"]["Enums"]["issue_stage"] | null
+          updated_at: string | null
+          vessel_count: number | null
+        }
+        Insert: {
+          article_id?: string | null
+          assigned_to?: string | null
+          category: Database["public"]["Enums"]["flare_category"]
+          company_contacted_at?: string | null
+          company_id: string
+          company_responded_at?: string | null
+          company_response?: string | null
+          corroboration_total?: number | null
+          created_at?: string | null
+          first_reported_at?: string | null
+          flare_count?: number | null
+          id?: string
+          is_recurring?: boolean | null
+          last_reported_at?: string | null
+          resolution_date?: string | null
+          resolution_description?: string | null
+          resolution_verified_by?: string | null
+          stage?: Database["public"]["Enums"]["issue_stage"] | null
+          updated_at?: string | null
+          vessel_count?: number | null
+        }
+        Update: {
+          article_id?: string | null
+          assigned_to?: string | null
+          category?: Database["public"]["Enums"]["flare_category"]
+          company_contacted_at?: string | null
+          company_id?: string
+          company_responded_at?: string | null
+          company_response?: string | null
+          corroboration_total?: number | null
+          created_at?: string | null
+          first_reported_at?: string | null
+          flare_count?: number | null
+          id?: string
+          is_recurring?: boolean | null
+          last_reported_at?: string | null
+          resolution_date?: string | null
+          resolution_description?: string | null
+          resolution_verified_by?: string | null
+          stage?: Database["public"]["Enums"]["issue_stage"] | null
+          updated_at?: string | null
+          vessel_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signal_issues_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: true
+            referencedRelation: "signal_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signal_issues_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signal_issues_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signal_issues_resolution_verified_by_fkey"
+            columns: ["resolution_verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signal_outreach_log: {
+        Row: {
+          id: string
+          issue_id: string
+          message_content: string | null
+          outreach_type: Database["public"]["Enums"]["outreach_type"]
+          responded_at: string | null
+          response_content: string | null
+          sent_at: string | null
+          sent_by: string | null
+          sent_to_email: string | null
+        }
+        Insert: {
+          id?: string
+          issue_id: string
+          message_content?: string | null
+          outreach_type: Database["public"]["Enums"]["outreach_type"]
+          responded_at?: string | null
+          response_content?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_to_email?: string | null
+        }
+        Update: {
+          id?: string
+          issue_id?: string
+          message_content?: string | null
+          outreach_type?: Database["public"]["Enums"]["outreach_type"]
+          responded_at?: string | null
+          response_content?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_to_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signal_outreach_log_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "signal_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signal_outreach_log_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       story_reactions: {
         Row: {
           created_at: string
@@ -2128,6 +2468,8 @@ export type Database = {
         | "labor"
         | "other"
       alert_severity: "info" | "warning" | "critical"
+      article_status: "draft" | "review" | "published"
+      article_type: "investigation" | "guide" | "resolution_spotlight"
       cert_status: "valid" | "expiring" | "expired"
       cert_type:
         | "coc"
@@ -2149,6 +2491,19 @@ export type Database = {
         | "channel"
       department_type: "deck" | "engine" | "electro" | "catering"
       experience_band: "0_2y" | "3_5y" | "6_10y" | "10y_plus"
+      flare_category:
+        | "unsafe_water"
+        | "wage_theft"
+        | "forced_overtime"
+        | "document_retention"
+        | "unsafe_conditions"
+        | "harassment_abuse"
+        | "environmental_violation"
+        | "food_safety"
+        | "medical_neglect"
+        | "other"
+      flare_severity: "concern" | "violation" | "critical"
+      flare_status: "pending" | "published" | "flagged" | "removed"
       guide_category:
         | "safety"
         | "navigation"
@@ -2165,12 +2520,25 @@ export type Database = {
         | "harassment"
         | "contract"
         | "other"
+      issue_stage:
+        | "monitoring"
+        | "emerging"
+        | "investigating"
+        | "company_contacted"
+        | "published"
+        | "resolved"
+        | "unresolved"
       mentorship_request_status:
         | "pending"
         | "accepted"
         | "declined"
         | "cancelled"
       message_type: "text" | "image" | "file" | "system"
+      outreach_type:
+        | "initial_contact"
+        | "follow_up"
+        | "company_response"
+        | "resolution_verification"
       rank_category: "officer" | "rating" | "cadet"
       review_status: "pending" | "published" | "flagged" | "removed"
       review_type: "company" | "vessel" | "manning_agency"
@@ -2330,6 +2698,8 @@ export const Constants = {
         "other",
       ],
       alert_severity: ["info", "warning", "critical"],
+      article_status: ["draft", "review", "published"],
+      article_type: ["investigation", "guide", "resolution_spotlight"],
       cert_status: ["valid", "expiring", "expired"],
       cert_type: [
         "coc",
@@ -2353,6 +2723,20 @@ export const Constants = {
       ],
       department_type: ["deck", "engine", "electro", "catering"],
       experience_band: ["0_2y", "3_5y", "6_10y", "10y_plus"],
+      flare_category: [
+        "unsafe_water",
+        "wage_theft",
+        "forced_overtime",
+        "document_retention",
+        "unsafe_conditions",
+        "harassment_abuse",
+        "environmental_violation",
+        "food_safety",
+        "medical_neglect",
+        "other",
+      ],
+      flare_severity: ["concern", "violation", "critical"],
+      flare_status: ["pending", "published", "flagged", "removed"],
       guide_category: [
         "safety",
         "navigation",
@@ -2371,6 +2755,15 @@ export const Constants = {
         "contract",
         "other",
       ],
+      issue_stage: [
+        "monitoring",
+        "emerging",
+        "investigating",
+        "company_contacted",
+        "published",
+        "resolved",
+        "unresolved",
+      ],
       mentorship_request_status: [
         "pending",
         "accepted",
@@ -2378,6 +2771,12 @@ export const Constants = {
         "cancelled",
       ],
       message_type: ["text", "image", "file", "system"],
+      outreach_type: [
+        "initial_contact",
+        "follow_up",
+        "company_response",
+        "resolution_verification",
+      ],
       rank_category: ["officer", "rating", "cadet"],
       review_status: ["pending", "published", "flagged", "removed"],
       review_type: ["company", "vessel", "manning_agency"],
@@ -2403,3 +2802,4 @@ export const Constants = {
     },
   },
 } as const
+

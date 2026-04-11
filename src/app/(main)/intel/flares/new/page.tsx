@@ -3,6 +3,10 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/types";
+
+type FlareCategory = Database["public"]["Enums"]["flare_category"];
+type FlareSeverity = Database["public"]["Enums"]["flare_severity"];
 
 const FLARE_CATEGORIES = [
   { value: "unsafe_water", label: "Unsafe Drinking Water" },
@@ -63,8 +67,8 @@ function NewFlareForm() {
   const [vesselId, setVesselId] = useState(
     searchParams.get("vessel") || ""
   );
-  const [category, setCategory] = useState("");
-  const [severity, setSeverity] = useState("concern");
+  const [category, setCategory] = useState<FlareCategory | "">("");
+  const [severity, setSeverity] = useState<FlareSeverity>("concern");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [incidentDateStart, setIncidentDateStart] = useState("");
@@ -181,13 +185,13 @@ function NewFlareForm() {
       return;
     }
 
-    const { error: insertError } = await (supabase as any)
+    const { error: insertError } = await supabase
       .from("signal_flares")
       .insert({
         profile_id: profile.id,
         company_id: companyId,
         vessel_id: vesselId || null,
-        category,
+        category: category as FlareCategory,
         severity,
         title: title.trim(),
         description: description.trim() || null,
@@ -266,7 +270,7 @@ function NewFlareForm() {
           </label>
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => setCategory(e.target.value as FlareCategory | "")}
             className="w-full px-3 py-2.5 bg-navy-800 border border-navy-600 rounded text-slate-100 text-sm focus:border-teal-500 focus:outline-none"
           >
             <option value="">Select issue type</option>
@@ -288,7 +292,7 @@ function NewFlareForm() {
               <button
                 key={s.value}
                 type="button"
-                onClick={() => setSeverity(s.value)}
+                onClick={() => setSeverity(s.value as FlareSeverity)}
                 className={`w-full text-left px-3 py-2.5 rounded border text-sm transition-colors ${
                   severity === s.value
                     ? s.color

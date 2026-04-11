@@ -35,14 +35,13 @@ const I18nContext = createContext<I18nContextType>({
 const loaders: Record<Locale, () => Promise<{ default: TranslationKeys }>> = {
   en: () => import("./locales/en"),
   fil: () => import("./locales/fil"),
-  // Placeholder loaders — these will fall back to English until translation files are created
-  hi: () => import("./locales/en"),
-  zh: () => import("./locales/en"),
-  id: () => import("./locales/en"),
-  ru: () => import("./locales/en"),
-  uk: () => import("./locales/en"),
-  es: () => import("./locales/en"),
-  my: () => import("./locales/en"),
+  hi: () => import("./locales/hi"),
+  zh: () => import("./locales/zh"),
+  id: () => import("./locales/id"),
+  ru: () => import("./locales/ru"),
+  uk: () => import("./locales/uk"),
+  es: () => import("./locales/es"),
+  my: () => import("./locales/my"),
 };
 
 const STORAGE_KEY = "seasignal-locale";

@@ -94,7 +94,7 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
     )
     .order("name");
 
-  const { data: signalIssues } = await (supabase as any)
+  const { data: signalIssues } = await supabase
     .from("signal_issues")
     .select(
       "id, category, stage, flare_count, corroboration_total, vessel_count, first_reported_at, resolution_date, resolution_description, company_contacted_at, is_recurring"

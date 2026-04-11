@@ -44,7 +44,7 @@ export default async function SignalReportsPage() {
   const supabase = await createClient();
 
   // Fetch published articles
-  const { data: articles } = await (supabase as any)
+  const { data: articles } = await supabase
     .from("signal_articles")
     .select(
       `
@@ -57,7 +57,7 @@ export default async function SignalReportsPage() {
     .limit(20);
 
   // Fetch active issues (emerging+ stage) for the "Active Issues" section
-  const { data: issues } = await (supabase as any)
+  const { data: issues } = await supabase
     .from("signal_issues")
     .select(
       `

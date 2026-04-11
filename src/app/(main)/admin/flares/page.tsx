@@ -47,7 +47,7 @@ export default function AdminFlaresPage() {
   }, []);
 
   async function loadFlares() {
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("signal_flares")
       .select(
         "*, companies (name), vessels (name), signal_flare_corroborations (id)"
@@ -58,9 +58,9 @@ export default function AdminFlaresPage() {
     setLoading(false);
   }
 
-  async function updateStatus(id: string, newStatus: string) {
+  async function updateStatus(id: string, newStatus: "published" | "pending" | "flagged" | "removed") {
     setActionLoading(id);
-    await (supabase as any)
+    await supabase
       .from("signal_flares")
       .update({ status: newStatus })
       .eq("id", id);
@@ -72,7 +72,7 @@ export default function AdminFlaresPage() {
 
   async function handleDelete(id: string) {
     setActionLoading(id);
-    await (supabase as any).from("signal_flares").delete().eq("id", id);
+    await supabase.from("signal_flares").delete().eq("id", id);
     setFlares((prev) => prev.filter((f) => f.id !== id));
     setDeleteConfirm(null);
     setActionLoading(null);

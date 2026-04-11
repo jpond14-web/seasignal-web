@@ -68,6 +68,7 @@ export default function HomePage() {
   const [fatigueAlert, setFatigueAlert] = useState<FatigueAlert | null>(null);
   const [pendingVerifications, setPendingVerifications] = useState(0);
   const [contractStrain, setContractStrain] = useState(false);
+  const [recentFlares, setRecentFlares] = useState<{id: string; title: string; category: string; severity: string; created_at: string; companies: {name: string} | null}[]>([]);
 
   // Stats
   const [storyCount, setStoryCount] = useState(0);
@@ -112,6 +113,16 @@ export default function HomePage() {
       supabase.from("mentors").select("id", { count: "exact", head: true }).eq("is_active", true),
       supabase.from("industry_alerts").select("id", { count: "exact", head: true }),
     ]);
+
+    // Fetch recent published signal flares
+    const { data: flaresData } = await supabase
+      .from("signal_flares")
+      .select("id, title, category, severity, created_at, companies(name)")
+      .eq("status", "published")
+      .lte("batch_release_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(3);
+    if (flaresData) setRecentFlares(flaresData as any);
 
     if (storiesRes.data) setStories(storiesRes.data as unknown as StoryPreviewData[]);
     if (alertsRes.data) setAlerts(alertsRes.data as unknown as AlertPreviewData[]);
@@ -334,6 +345,53 @@ export default function HomePage() {
                       {alert.severity}
                     </span>
                     <span className="text-slate-300 text-sm truncate">{alert.title}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Signal Flares */}
+      {recentFlares.length > 0 && (
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">
+              Recent Signal Flares
+            </h3>
+            <Link href="/intel/flares" className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
+              View all &rarr;
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {recentFlares.map((flare) => {
+              const severityStyles: Record<string, string> = {
+                concern: "bg-amber-500/15 border-amber-500/40 text-amber-400",
+                violation: "bg-orange-500/15 border-orange-500/40 text-orange-400",
+                critical: "bg-red-500/15 border-red-500/40 text-red-400",
+              };
+              const categoryLabels: Record<string, string> = {
+                unsafe_water: "Water", wage_theft: "Wages", forced_overtime: "Overtime",
+                document_retention: "Documents", unsafe_conditions: "Safety",
+                harassment_abuse: "Harassment", environmental_violation: "Environment",
+                food_safety: "Food", medical_neglect: "Medical", other: "Other",
+              };
+              return (
+                <Link
+                  key={flare.id}
+                  href="/intel/flares"
+                  className="block bg-navy-900 border border-navy-700 rounded-lg p-3.5 hover:border-amber-500/30 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded border font-medium flex-shrink-0 ${severityStyles[flare.severity] || severityStyles.concern}`}>
+                      {flare.severity}
+                    </span>
+                    <span className="text-slate-300 text-sm truncate">{flare.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                    <span>{categoryLabels[flare.category] || flare.category}</span>
+                    {flare.companies && <><span>·</span><span>{flare.companies.name}</span></>}
                   </div>
                 </Link>
               );

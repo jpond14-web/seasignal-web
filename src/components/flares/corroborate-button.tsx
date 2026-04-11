@@ -41,7 +41,7 @@ export function CorroborateButton({ flareId }: { flareId: string }) {
       return;
     }
 
-    const { error: insertError } = await (supabase as any)
+    const { error: insertError } = await supabase
       .from("signal_flare_corroborations")
       .insert({
         flare_id: flareId,
