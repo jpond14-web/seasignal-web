@@ -541,6 +541,8 @@ model companies {
   incident_logs                                  incident_logs[]
   pay_reports                                    pay_reports[]
   reviews                                        reviews[]
+  signal_flares                                  signal_flares[]
+  signal_issues                                  signal_issues[]
   vessels_vessels_manager_company_idTocompanies  vessels[]       @relation("vessels_manager_company_idTocompanies")
   vessels_vessels_operator_company_idTocompanies vessels[]       @relation("vessels_operator_company_idTocompanies")
   vessels_vessels_owner_company_idTocompanies    vessels[]       @relation("vessels_owner_company_idTocompanies")
@@ -764,17 +766,22 @@ model profiles {
   home_port            String?
   created_at           DateTime?              @default(now()) @db.Timestamptz(6)
   updated_at           DateTime?              @default(now()) @db.Timestamptz(6)
-  certificates         certificates[]
-  conversation_members conversation_members[]
-  conversations        conversations[]
-  crew_history         crew_history[]
-  forum_posts          forum_posts[]
-  incident_logs        incident_logs[]
-  messages             messages[]
-  pay_reports          pay_reports[]
-  post_votes           post_votes[]
-  users                users                  @relation(fields: [auth_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  reviews              reviews[]
+  certificates                certificates[]
+  conversation_members        conversation_members[]
+  conversations               conversations[]
+  crew_history                crew_history[]
+  forum_posts                 forum_posts[]
+  incident_logs               incident_logs[]
+  messages                    messages[]
+  pay_reports                 pay_reports[]
+  post_votes                  post_votes[]
+  users                       users                           @relation(fields: [auth_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reviews                     reviews[]
+  signal_flares               signal_flares[]
+  signal_flare_corroborations signal_flare_corroborations[]
+  signal_issues_assigned      signal_issues[]                 @relation("issue_assigned")
+  signal_articles_authored    signal_articles[]                @relation("article_author")
+  signal_outreach_sent        signal_outreach_log[]            @relation("outreach_sent_by")
 
   @@index([auth_user_id], map: "idx_profiles_auth_user")
   @@index([is_verified], map: "idx_profiles_verified")
@@ -867,6 +874,8 @@ model vessels {
   crew_history                                     crew_history[]
   incident_logs                                    incident_logs[]
   reviews                                          reviews[]
+  signal_flares                                    signal_flares[]
+  signal_flare_corroborations                      signal_flare_corroborations[]
   companies_vessels_manager_company_idTocompanies  companies?      @relation("vessels_manager_company_idTocompanies", fields: [manager_company_id], references: [id], onUpdate: NoAction)
   companies_vessels_operator_company_idTocompanies companies?      @relation("vessels_operator_company_idTocompanies", fields: [operator_company_id], references: [id], onUpdate: NoAction)
   companies_vessels_owner_company_idTocompanies    companies?      @relation("vessels_owner_company_idTocompanies", fields: [owner_company_id], references: [id], onUpdate: NoAction)
@@ -1091,5 +1100,210 @@ enum vessel_type {
   fishing
   other
 
+  @@schema("public")
+}
+
+enum flare_category {
+  unsafe_water
+  wage_theft
+  forced_overtime
+  document_retention
+  unsafe_conditions
+  harassment_abuse
+  environmental_violation
+  food_safety
+  medical_neglect
+  other
+
+  @@schema("public")
+}
+
+enum flare_status {
+  pending
+  published
+  flagged
+  removed
+
+  @@schema("public")
+}
+
+enum flare_severity {
+  concern
+  violation
+  critical
+
+  @@schema("public")
+}
+
+enum issue_stage {
+  monitoring
+  emerging
+  investigating
+  company_contacted
+  published
+  resolved
+  unresolved
+
+  @@schema("public")
+}
+
+enum article_type {
+  investigation
+  guide
+  resolution_spotlight
+
+  @@schema("public")
+}
+
+enum article_status {
+  draft
+  review
+  published
+
+  @@schema("public")
+}
+
+enum outreach_type {
+  initial_contact
+  follow_up
+  company_response
+  resolution_verification
+
+  @@schema("public")
+}
+
+/// Signal Flare: individual seafarer report of a systemic issue
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model signal_flares {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profile_id         String         @db.Uuid
+  company_id         String         @db.Uuid
+  vessel_id          String?        @db.Uuid
+  issue_id           String?        @db.Uuid
+  category           flare_category
+  severity           flare_severity @default(concern)
+  title              String
+  description        String?
+  incident_date_start DateTime?     @db.Date
+  incident_date_end  DateTime?      @db.Date
+  attachments        Json?          @default("[]")
+  is_anonymous       Boolean?       @default(true)
+  batch_release_at   DateTime?      @db.Timestamptz(6)
+  status             flare_status?  @default(pending)
+  admin_notes        String?
+  created_at         DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?      @default(now()) @db.Timestamptz(6)
+
+  companies                    companies                      @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+  profiles                     profiles                       @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vessels                      vessels?                        @relation(fields: [vessel_id], references: [id], onUpdate: NoAction)
+  signal_issues                signal_issues?                  @relation(fields: [issue_id], references: [id], onUpdate: NoAction)
+  signal_flare_corroborations  signal_flare_corroborations[]
+
+  @@index([company_id], map: "idx_flares_company")
+  @@index([status], map: "idx_flares_status")
+  @@index([category], map: "idx_flares_category")
+  @@index([issue_id], map: "idx_flares_issue")
+  @@index([batch_release_at], map: "idx_flares_batch", where: raw("(status = 'pending'::flare_status)"))
+  @@schema("public")
+}
+
+/// Signal Flare corroboration: another seafarer confirming they witnessed the same issue
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model signal_flare_corroborations {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  flare_id   String        @db.Uuid
+  profile_id String        @db.Uuid
+  vessel_id  String?       @db.Uuid
+  statement  String?
+  created_at DateTime?     @default(now()) @db.Timestamptz(6)
+
+  signal_flares signal_flares @relation(fields: [flare_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles      profiles      @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vessels       vessels?      @relation(fields: [vessel_id], references: [id], onUpdate: NoAction)
+
+  @@unique([flare_id, profile_id])
+  @@index([flare_id], map: "idx_corroborations_flare")
+  @@index([profile_id], map: "idx_corroborations_profile")
+  @@schema("public")
+}
+
+/// Signal Issue: aggregated issue (company + category), tracks lifecycle from monitoring to resolution
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model signal_issues {
+  id                     String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id             String       @db.Uuid
+  category               flare_category
+  stage                  issue_stage  @default(monitoring)
+  assigned_to            String?      @db.Uuid
+  flare_count            Int?         @default(0)
+  corroboration_total    Int?         @default(0)
+  vessel_count           Int?         @default(0)
+  first_reported_at      DateTime?    @db.Timestamptz(6)
+  last_reported_at       DateTime?    @db.Timestamptz(6)
+  company_contacted_at   DateTime?    @db.Timestamptz(6)
+  company_response       String?
+  company_responded_at   DateTime?    @db.Timestamptz(6)
+  resolution_description String?
+  resolution_date        DateTime?    @db.Timestamptz(6)
+  resolution_verified_by String?      @db.Uuid
+  is_recurring           Boolean?     @default(false)
+  article_id             String?      @unique @db.Uuid
+  created_at             DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?    @default(now()) @db.Timestamptz(6)
+
+  companies       companies        @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+  assigned_profile profiles?        @relation("issue_assigned", fields: [assigned_to], references: [id], onUpdate: NoAction)
+  signal_flares   signal_flares[]
+  signal_articles signal_articles? @relation(fields: [article_id], references: [id], onUpdate: NoAction)
+  signal_outreach_log signal_outreach_log[]
+
+  @@unique([company_id, category])
+  @@index([company_id], map: "idx_issues_company")
+  @@index([stage], map: "idx_issues_stage")
+  @@schema("public")
+}
+
+/// Signal Article: editorial content (investigations, guides, resolution spotlights)
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model signal_articles {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  article_type          article_type
+  title                 String
+  slug                  String          @unique
+  content               String?
+  author_id             String?         @db.Uuid
+  status                article_status? @default(draft)
+  published_at          DateTime?       @db.Timestamptz(6)
+  related_regulations   Json?           @default("[]")
+  created_at            DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?       @default(now()) @db.Timestamptz(6)
+
+  author          profiles?       @relation("article_author", fields: [author_id], references: [id], onUpdate: NoAction)
+  signal_issues   signal_issues[]
+
+  @@index([status], map: "idx_articles_status")
+  @@index([article_type], map: "idx_articles_type")
+  @@index([published_at], map: "idx_articles_published")
+  @@schema("public")
+}
+
+/// Signal Outreach Log: tracks all communication with companies about issues
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model signal_outreach_log {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issue_id         String        @db.Uuid
+  outreach_type    outreach_type
+  sent_to_email    String?
+  sent_by          String?       @db.Uuid
+  message_content  String?
+  response_content String?
+  sent_at          DateTime?     @default(now()) @db.Timestamptz(6)
+  responded_at     DateTime?     @db.Timestamptz(6)
+
+  signal_issues signal_issues @relation(fields: [issue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sent_by_profile profiles?   @relation("outreach_sent_by", fields: [sent_by], references: [id], onUpdate: NoAction)
+
+  @@index([issue_id], map: "idx_outreach_issue")
   @@schema("public")
 }

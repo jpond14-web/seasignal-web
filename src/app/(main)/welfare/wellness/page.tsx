@@ -216,9 +216,19 @@ export default function WellnessPage() {
         <h2 className="text-slate-100 font-semibold text-lg mb-2">
           Weekly Wellness Check-in
         </h2>
-        <p className="text-slate-300 text-sm leading-relaxed">
+        <p className="text-slate-300 text-sm leading-relaxed mb-2">
           Rate each dimension from 1 (poor) to 5 (excellent). This takes about
           a minute and helps you track your wellbeing over time.
+        </p>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
+          <span><span className="text-red-400 font-mono">1</span> Poor</span>
+          <span><span className="text-red-400 font-mono">2</span> Below avg</span>
+          <span><span className="text-amber-400 font-mono">3</span> Average</span>
+          <span><span className="text-emerald-400 font-mono">4</span> Good</span>
+          <span><span className="text-emerald-400 font-mono">5</span> Excellent</span>
+        </div>
+        <p className="text-xs text-slate-600 mt-2">
+          Your check-ins are private — only you see them. Over time, patterns help you recognise what affects your wellbeing.
         </p>
       </div>
 
@@ -282,6 +292,9 @@ export default function WellnessPage() {
             >
               Contract day number (optional)
             </label>
+            <p className="text-xs text-slate-600 mb-1.5">
+              How many days into your current contract. Helps track fatigue risk over long deployments — research shows wellbeing typically declines after 6+ months.
+            </p>
             <input
               id="contract-day"
               type="number"

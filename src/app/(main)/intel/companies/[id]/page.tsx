@@ -94,6 +94,15 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
     )
     .order("name");
 
+  const { data: signalIssues } = await (supabase as any)
+    .from("signal_issues")
+    .select(
+      "id, category, stage, flare_count, corroboration_total, vessel_count, first_reported_at, resolution_date, resolution_description, company_contacted_at, is_recurring"
+    )
+    .eq("company_id", id)
+    .neq("stage", "monitoring")
+    .order("last_reported_at", { ascending: false });
+
   const payScore = company.pay_reliability_score
     ? Number(company.pay_reliability_score)
     : null;
@@ -166,6 +175,12 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
             value={company.contract_accuracy_score}
           />
         </div>
+        <p className="text-xs text-slate-600 mt-3 text-center">
+          Scores are from 1 to 5 based on seafarer reviews.{" "}
+          <span className="text-green-400">4+</span> Good &middot;{" "}
+          <span className="text-amber-400">2.5–3.9</span> Mixed &middot;{" "}
+          <span className="text-red-400">&lt;2.5</span> Poor
+        </p>
 
         {company.pattern_flags && (() => {
           const flags = company.pattern_flags as Record<string, unknown>;
@@ -174,29 +189,32 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
           return (
             <div className="mt-4 pt-4 border-t border-navy-700">
               <h3 className="text-sm font-medium text-slate-300 mb-2">Pattern Flags</h3>
+              <p className="text-xs text-slate-600 mb-2">
+                Flags appear when multiple seafarers report the same type of problem.
+              </p>
               <div className="flex flex-wrap gap-2">
                 {Boolean(flags.bait_and_switch) && (
-                  <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400">
+                  <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400" title="Job offer differs from actual contract — different pay, rank, vessel, or conditions than promised">
                     Bait &amp; Switch Reports
                   </span>
                 )}
                 {Boolean(flags.hidden_fees) && (
-                  <span className="text-xs px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400">
+                  <span className="text-xs px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400" title="Charges not disclosed upfront — recruitment fees, agency costs, or unexpected deductions">
                     Hidden Fees Reported
                   </span>
                 )}
                 {Boolean(flags.deployment_delays) && (
-                  <span className="text-xs px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400">
+                  <span className="text-xs px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400" title="Extended waiting period before joining vessel after signing contract">
                     Deployment Delays
                   </span>
                 )}
                 {Boolean(flags.wage_issues) && (
-                  <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400">
+                  <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400" title="Late, partial, or incorrect payment reported by crew">
                     Wage Issues
                   </span>
                 )}
                 {Boolean(flags.safety_concerns) && (
-                  <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400">
+                  <span className="text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400" title="Reports of hazardous conditions or inadequate safety equipment on board">
                     Safety Concerns
                   </span>
                 )}
@@ -213,8 +231,121 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
         >
           Write Review
         </Link>
+        <Link
+          href={`/intel/flares/new?company=${id}`}
+          className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-navy-950 font-medium rounded text-sm transition-colors"
+        >
+          Report an Issue
+        </Link>
         <FollowButton companyId={id} />
       </div>
+
+      {signalIssues && signalIssues.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">Reported Issues</h2>
+          <div className="space-y-2">
+            {signalIssues.map((issue: any) => {
+              const isResolved = issue.stage === "resolved";
+              const categoryLabel: Record<string, string> = {
+                unsafe_water: "Water Quality",
+                wage_theft: "Wage Theft",
+                forced_overtime: "Forced Overtime",
+                document_retention: "Document Retention",
+                unsafe_conditions: "Unsafe Conditions",
+                harassment_abuse: "Harassment / Abuse",
+                environmental_violation: "Environmental",
+                food_safety: "Food Safety",
+                medical_neglect: "Medical Neglect",
+                other: "Other",
+              };
+              const stageColors: Record<string, string> = {
+                emerging: "text-amber-400",
+                investigating: "text-amber-400",
+                company_contacted: "text-orange-400",
+                published: "text-teal-400",
+                resolved: "text-green-400",
+                unresolved: "text-red-400",
+              };
+              const stageLabel: Record<string, string> = {
+                emerging: "Emerging",
+                investigating: "Investigating",
+                company_contacted: "Company Contacted",
+                published: "Active",
+                resolved: "Resolved",
+                unresolved: "Unresolved",
+              };
+              return (
+                <div
+                  key={issue.id}
+                  className={`bg-navy-900 border rounded-lg p-3 ${
+                    isResolved
+                      ? "border-green-500/20"
+                      : "border-amber-500/20"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          isResolved ? "bg-green-400" : "bg-amber-400"
+                        }`}
+                      />
+                      <span className="text-sm font-medium text-slate-100">
+                        {categoryLabel[issue.category] || issue.category}
+                      </span>
+                      <span
+                        className={`text-xs ${stageColors[issue.stage] || "text-slate-500"}`}
+                      >
+                        {stageLabel[issue.stage] || issue.stage}
+                      </span>
+                      {issue.is_recurring && (
+                        <span className="text-xs px-1.5 py-0.5 bg-red-500/10 border border-red-500/20 rounded text-red-400">
+                          Recurring
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
+                    <span>
+                      {issue.flare_count} report
+                      {issue.flare_count !== 1 ? "s" : ""}
+                    </span>
+                    <span>
+                      {issue.corroboration_total} corroboration
+                      {issue.corroboration_total !== 1 ? "s" : ""}
+                    </span>
+                    <span>
+                      {issue.vessel_count} vessel
+                      {issue.vessel_count !== 1 ? "s" : ""}
+                    </span>
+                    <span>&middot;</span>
+                    <span>
+                      Since {formatDate(issue.first_reported_at)}
+                    </span>
+                  </div>
+                  {isResolved && issue.resolution_description && (
+                    <p className="text-xs text-green-400/80 mt-2">
+                      {issue.resolution_description}
+                    </p>
+                  )}
+                  {issue.company_contacted_at && !isResolved && (
+                    <p className="text-xs text-orange-400/80 mt-2">
+                      Company contacted {formatDate(issue.company_contacted_at)}
+                      {issue.stage === "unresolved"
+                        ? " \u2014 no resolution"
+                        : " \u2014 awaiting response"}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            These reports reflect individual seafarer observations and have not
+            been independently verified.
+          </p>
+        </div>
+      )}
 
       {vessels && vessels.length > 0 && (
         <div className="mb-6">

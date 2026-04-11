@@ -188,6 +188,18 @@ export default function FatiguePage() {
               </button>
             ))}
           </div>
+
+          {selectedScore !== null && selectedScore >= 5 && (
+            <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              <p className="text-sm font-medium text-red-400 mb-1">High fatigue — take action</p>
+              <ul className="text-xs text-slate-400 space-y-1 list-disc list-inside">
+                <li>Inform your officer of the watch or master about your fatigue level</li>
+                <li>Under MLC Regulation 2.3, you are entitled to minimum rest hours — do not sign falsified records</li>
+                <li>If you feel unable to perform safety-critical tasks, say so — this protects you and your crew</li>
+                <li>Contact <span className="text-teal-400">SeafarerHelp (ISWAN)</span> 24/7: WhatsApp +44 7909 890 365</li>
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Optional fields */}

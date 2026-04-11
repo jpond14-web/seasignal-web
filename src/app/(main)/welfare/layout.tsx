@@ -14,7 +14,10 @@ const tabs = [
 export default function WelfareLayout({ children }: { children: React.ReactNode }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4 text-slate-100">Welfare</h1>
+      <h1 className="text-2xl font-bold mb-1 text-slate-100">Welfare</h1>
+      <p className="text-sm text-slate-500 mb-4">
+        Your wellbeing matters. Track your health, know your rights under MLC 2006, and access support resources — all private to you.
+      </p>
       <HubNav items={tabs} />
       {children}
     </div>

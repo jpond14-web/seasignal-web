@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { UnreadBadge } from "./unread-badge";
 import { NotificationBell } from "./notification-bell";
 import { GlobalSearch, SearchTrigger } from "@/components/ui/global-search";
+import { LanguageSelector } from "./LanguageSelector";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge: boolean };
 
@@ -107,6 +108,11 @@ function UserPillDropdown({
               </Link>
             );
           })}
+          <div className="mx-2 my-1 border-t border-navy-600" />
+          <div className="px-3 py-2 flex items-center justify-between gap-2">
+            <span className="text-xs text-slate-500">Language</span>
+            <LanguageSelector />
+          </div>
           <div className="mx-2 my-1 border-t border-navy-600" />
           <button
             onClick={() => {

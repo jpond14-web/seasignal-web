@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
 import { FontSizeProvider } from "@/components/layout/FontSizeProvider";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import { I18nProvider } from "@/lib/i18n";
 import "./globals.css";
 
 const inter = Inter({
@@ -88,7 +89,9 @@ export default function RootLayout({
         <ToastProvider>
           <FontSizeProvider>
             <ThemeProvider>
-              {children}
+              <I18nProvider>
+                {children}
+              </I18nProvider>
             </ThemeProvider>
           </FontSizeProvider>
         </ToastProvider>

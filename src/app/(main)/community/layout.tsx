@@ -13,7 +13,10 @@ const tabs = [
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4 text-slate-100">Community</h1>
+      <h1 className="text-2xl font-bold mb-1 text-slate-100">Community</h1>
+      <p className="text-sm text-slate-500 mb-4">
+        Connect with fellow seafarers. Share experiences, ask questions, find mentors, and support each other — your identity is always protected.
+      </p>
       <HubNav items={tabs} />
       {children}
     </div>

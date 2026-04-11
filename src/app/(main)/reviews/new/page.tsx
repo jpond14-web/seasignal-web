@@ -6,14 +6,22 @@ import { createClient } from "@/lib/supabase/client";
 import type { Enums } from "@/lib/supabase/types";
 
 const ratingFields = [
-  { key: "pay_reliability", label: "Pay Reliability" },
-  { key: "contract_accuracy", label: "Contract Accuracy" },
-  { key: "safety_culture", label: "Safety Culture" },
-  { key: "food_quality", label: "Food Quality" },
-  { key: "shore_leave", label: "Shore Leave" },
-  { key: "management", label: "Management" },
-  { key: "equipment_condition", label: "Equipment Condition" },
+  { key: "pay_reliability", label: "Pay Reliability", help: "Were you paid on time and in full per your contract?" },
+  { key: "contract_accuracy", label: "Contract Accuracy", help: "Did the actual job match what was promised in your contract?" },
+  { key: "safety_culture", label: "Safety Culture", help: "Were safety procedures followed? Was safety equipment provided?" },
+  { key: "food_quality", label: "Food Quality", help: "Was food nutritious, varied, and were dietary needs met?" },
+  { key: "shore_leave", label: "Shore Leave", help: "Were you given reasonable shore leave when in port?" },
+  { key: "management", label: "Management", help: "Were officers fair, professional, and approachable?" },
+  { key: "equipment_condition", label: "Equipment Condition", help: "Was equipment properly maintained and in safe working order?" },
 ];
+
+const RATING_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: "Very Poor", color: "text-red-400" },
+  2: { label: "Poor", color: "text-orange-400" },
+  3: { label: "Average", color: "text-amber-400" },
+  4: { label: "Good", color: "text-teal-400" },
+  5: { label: "Excellent", color: "text-green-400" },
+};
 
 export default function NewReviewPage() {
   return (
@@ -159,26 +167,53 @@ function NewReviewForm() {
         </div>
 
         <div>
-          <label className="block text-sm text-slate-300 mb-3">Ratings</label>
+          <label className="block text-sm text-slate-300 mb-1">Ratings</label>
+          <div className="flex gap-2 bg-navy-800 border border-navy-700 p-3 rounded mb-3">
+            <svg className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <div className="text-xs text-slate-400">
+              <p className="mb-1">Rate each area based on your personal experience:</p>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                <span><span className="text-red-400 font-mono">1</span> Very Poor</span>
+                <span><span className="text-orange-400 font-mono">2</span> Poor</span>
+                <span><span className="text-amber-400 font-mono">3</span> Average</span>
+                <span><span className="text-teal-400 font-mono">4</span> Good</span>
+                <span><span className="text-green-400 font-mono">5</span> Excellent</span>
+              </div>
+            </div>
+          </div>
           <div className="space-y-3">
             {ratingFields.map((field) => (
-              <div key={field.key} className="flex items-center justify-between">
-                <span className="text-sm text-slate-400">{field.label}</span>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setRatings((prev) => ({ ...prev, [field.key]: n }))}
-                      className={`w-8 h-8 rounded text-sm font-mono transition-colors ${
-                        (ratings[field.key] || 0) >= n
-                          ? "bg-teal-500 text-navy-950"
-                          : "bg-navy-800 text-slate-500 border border-navy-600"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
+              <div key={field.key}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm text-slate-400">{field.label}</span>
+                    <p className="text-xs text-slate-600">{field.help}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {ratings[field.key] && (
+                      <span className={`text-xs ${RATING_LABELS[ratings[field.key]].color}`}>
+                        {RATING_LABELS[ratings[field.key]].label}
+                      </span>
+                    )}
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setRatings((prev) => ({ ...prev, [field.key]: n }))}
+                          className={`w-8 h-8 rounded text-sm font-mono transition-colors ${
+                            (ratings[field.key] || 0) >= n
+                              ? "bg-teal-500 text-navy-950"
+                              : "bg-navy-800 text-slate-500 border border-navy-600"
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
