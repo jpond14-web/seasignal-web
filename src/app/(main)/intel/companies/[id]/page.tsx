@@ -103,6 +103,14 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
     .neq("stage", "monitoring")
     .order("last_reported_at", { ascending: false });
 
+  // Aggregated Signal Flare stats for this company
+  const { data: publishedFlares } = await supabase
+    .from("signal_flares")
+    .select("id, category, severity, signal_flare_corroborations(id)")
+    .eq("company_id", id)
+    .eq("status", "published")
+    .lte("batch_release_at", new Date().toISOString());
+
   const payScore = company.pay_reliability_score
     ? Number(company.pay_reliability_score)
     : null;
@@ -240,11 +248,63 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
         <FollowButton companyId={id} />
       </div>
 
+      {publishedFlares && publishedFlares.length > 0 && (() => {
+        const totalFlares = publishedFlares.length;
+        const totalCorroborations = publishedFlares.reduce((s, f) => s + (f.signal_flare_corroborations?.length ?? 0), 0);
+        const categoryCounts: Record<string, number> = {};
+        const severityCounts: Record<string, number> = { concern: 0, violation: 0, critical: 0 };
+        for (const f of publishedFlares) {
+          categoryCounts[f.category] = (categoryCounts[f.category] || 0) + 1;
+          if (f.severity && f.severity in severityCounts) severityCounts[f.severity]++;
+        }
+        const categoryLabels: Record<string, string> = {
+          unsafe_water: "Unsafe Water", wage_theft: "Wage Theft", forced_overtime: "Forced Overtime",
+          document_retention: "Document Retention", unsafe_conditions: "Unsafe Conditions",
+          harassment_abuse: "Harassment / Abuse", environmental_violation: "Environmental",
+          food_safety: "Food Safety", medical_neglect: "Medical Neglect", other: "Other",
+        };
+        const hasCritical = severityCounts.critical > 0;
+        return (
+          <div className={`mb-6 rounded-lg p-4 border ${hasCritical ? "bg-red-500/5 border-red-500/20" : "bg-amber-500/5 border-amber-500/20"}`}>
+            <h2 className={`text-sm font-semibold mb-2 ${hasCritical ? "text-red-400" : "text-amber-400"}`}>
+              Signal Flare Summary
+            </h2>
+            <p className="text-sm text-slate-300 mb-3">
+              {totalFlares} active report{totalFlares !== 1 ? "s" : ""} from seafarers
+              {totalCorroborations > 0 && <>, {totalCorroborations} corroboration{totalCorroborations !== 1 ? "s" : ""}</>}
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {Object.entries(categoryCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([cat, count]) => (
+                  <span key={cat} className="text-xs px-2 py-1 bg-navy-800 border border-navy-600 rounded text-slate-300">
+                    {categoryLabels[cat] || cat} ({count})
+                  </span>
+                ))}
+            </div>
+            <div className="flex gap-3 text-xs">
+              {severityCounts.critical > 0 && (
+                <span className="text-red-400">{severityCounts.critical} critical</span>
+              )}
+              {severityCounts.violation > 0 && (
+                <span className="text-orange-400">{severityCounts.violation} violation{severityCounts.violation !== 1 ? "s" : ""}</span>
+              )}
+              {severityCounts.concern > 0 && (
+                <span className="text-amber-400">{severityCounts.concern} concern{severityCounts.concern !== 1 ? "s" : ""}</span>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-600 mt-2">
+              These reports reflect individual seafarer observations and have not been independently verified.
+            </p>
+          </div>
+        );
+      })()}
+
       {signalIssues && signalIssues.length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold mb-3">Reported Issues</h2>
           <div className="space-y-2">
-            {signalIssues.map((issue: any) => {
+            {signalIssues.map((issue) => {
               const isResolved = issue.stage === "resolved";
               const categoryLabel: Record<string, string> = {
                 unsafe_water: "Water Quality",
@@ -294,9 +354,9 @@ export default async function PublicCompanyDetailPage({ params }: Props) {
                         {categoryLabel[issue.category] || issue.category}
                       </span>
                       <span
-                        className={`text-xs ${stageColors[issue.stage] || "text-slate-500"}`}
+                        className={`text-xs ${(issue.stage && stageColors[issue.stage]) || "text-slate-500"}`}
                       >
-                        {stageLabel[issue.stage] || issue.stage}
+                        {(issue.stage && stageLabel[issue.stage]) || issue.stage}
                       </span>
                       {issue.is_recurring && (
                         <span className="text-xs px-1.5 py-0.5 bg-red-500/10 border border-red-500/20 rounded text-red-400">

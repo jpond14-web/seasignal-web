@@ -185,6 +185,21 @@ function NewFlareForm() {
       return;
     }
 
+    // Rate limit: max 5 flares per user per 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const { count: recentCount } = await supabase
+      .from("signal_flares")
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profile.id)
+      .gte("created_at", thirtyDaysAgo.toISOString());
+
+    if ((recentCount ?? 0) >= 5) {
+      setError("You can submit up to 5 Signal Flares per month. Please wait before submitting another.");
+      setLoading(false);
+      return;
+    }
+
     const { error: insertError } = await supabase
       .from("signal_flares")
       .insert({
