@@ -1,0 +1,42 @@
+# CI gate for pull requests + main pushes.
+#
+# Included steps all pass locally as of 2026-08-02 (typecheck clean,
+# 133/133 vitest tests green).
+#
+# Intentionally NOT in CI (would fail or can't run headlessly today):
+#   - `npm run lint`      — currently reports 10 eslint errors; add back once clean.
+#   - `npm run test:e2e`  — Playwright needs browsers + a running app with real env.
+#   - `next build`        — Vercel builds every PR via its GitHub integration.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: typecheck + vitest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Prisma Client types are generated, not committed; tsc needs them.
+      # Verified to run without DATABASE_URL set.
+      - run: npx prisma generate
+
+      - run: npx tsc --noEmit
+
+      - run: npm run test:run
